@@ -208,13 +208,14 @@ const THEMES = [
   { id:'fuego',  label:'Fuego',   bg:['#2b0a0a','#4d1010'],  accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
 ];
 const themeColors = ['#27ae60','#2980b9','#c87820','#7c3aed','#dc2626'];
-let activeTheme = THEMES[0];
+const DEFAULT_THEME_IDX = 1; // cielo (azul)
+let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
 let cachedImg = null;
 
 THEMES.forEach((t, i) => {
   const btn = document.createElement('button');
-  btn.className = 'theme-btn' + (i === 0 ? ' active' : '');
+  btn.className = 'theme-btn' + (i === DEFAULT_THEME_IDX ? ' active' : '');
   btn.style.background = themeColors[i];
   btn.title = t.label;
   btn.onclick = () => {
@@ -341,10 +342,18 @@ async function renderCanvas(d) {
   // Load image through our own /api/image proxy
   cachedImg = null;
   if (d.image) {
-    try {
-      cachedImg = await loadImage(`/api/image?url=${encodeURIComponent(d.image)}`);
-    } catch (e) {
-      cachedImg = null;
+    // Try proxy first, then direct URL as fallback
+    const attempts = [
+      `/api/image?url=${encodeURIComponent(d.image)}`,
+      d.image,
+    ];
+    for (const src of attempts) {
+      try {
+        cachedImg = await loadImage(src);
+        break; // got it
+      } catch (e) {
+        // try next
+      }
     }
   }
   drawStory(ctx, d, cachedImg, activeTheme);

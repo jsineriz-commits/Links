@@ -245,9 +245,22 @@ async function fetchLote() {
       throw new Error(err.error || `Error ${res.status}`);
     }
     const html = await res.text();
-    if (!html || html.length < 100) throw new Error('Respuesta vacía o inválida');
+    if (!html || html.length < 100) throw new Error('Respuesta vacía — el sitio no respondió bien');
 
-    loteData = parseHTML(html, raw);
+    // Use the final (redirected) URL if available
+    const finalUrl = res.headers.get('x-final-url') || raw;
+
+    loteData = parseHTML(html, finalUrl);
+
+    // Validate we got useful data
+    if (!loteData.title && !loteData.image && !loteData.sku) {
+      throw new Error(
+        'No se encontraron datos del lote.\n' +
+        'Usá el link largo, por ejemplo:\n' +
+        'decampoacampo.com/__dcac/25-Vacas-CUT-Prenadas-480kg-invernada-31667'
+      );
+    }
+
     renderInfo(loteData);
 
     // Wait for fonts before drawing canvas (critical on mobile)
@@ -263,7 +276,7 @@ async function fetchLote() {
     setTimeout(() => { if (loteData) redraw(); }, 1500);
   } catch (e) {
     setLoading(false);
-    showError('Error: ' + e.message);
+    showError(e.message);
   }
 }
 

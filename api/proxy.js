@@ -2,10 +2,12 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 
-function fetchUrl(urlStr, headers = {}) {
+function fetchUrl(urlStr, headers = {}, redirectsLeft = 5) {
   return new Promise((resolve, reject) => {
+    if (redirectsLeft <= 0) return reject(new Error('Too many redirects'));
+
     let parsed;
-    try { parsed = new URL(urlStr); } catch (e) { return reject(new Error('URL inválida')); }
+    try { parsed = new URL(urlStr); } catch (e) { return reject(new Error('URL inválida: ' + urlStr)); }
 
     const lib = parsed.protocol === 'https:' ? https : http;
     const options = {
@@ -22,17 +24,29 @@ function fetchUrl(urlStr, headers = {}) {
     };
 
     const req = lib.request(options, (res) => {
-      // follow redirects
+      // Follow redirects — resolving relative Location headers against the original URL
       if (res.statusCode >= 301 && res.statusCode <= 308 && res.headers.location) {
-        return fetchUrl(res.headers.location, headers).then(resolve).catch(reject);
+        let loc = res.headers.location;
+        // Resolve relative redirects
+        if (!loc.startsWith('http')) {
+          loc = new URL(loc, parsed.origin).href;
+        }
+        res.resume(); // drain the response
+        return fetchUrl(loc, headers, redirectsLeft - 1).then(resolve).catch(reject);
       }
+
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+      res.on('end', () => resolve({
+        status: res.statusCode,
+        contentType: res.headers['content-type'] || 'text/html',
+        body: Buffer.concat(chunks),
+        finalUrl: urlStr,
+      }));
     });
 
     req.on('error', reject);
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(12000, () => { req.destroy(); reject(new Error('Timeout al conectar con decampoacampo.com')); });
     req.end();
   });
 }
@@ -51,6 +65,7 @@ module.exports = async function handler(req, res) {
       return res.status(result.status).json({ error: `El sitio respondió con ${result.status}` });
     }
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('X-Final-Url', result.finalUrl);
     res.status(200).send(result.body.toString('utf-8'));
   } catch (e) {
     res.status(500).json({ error: e.message });

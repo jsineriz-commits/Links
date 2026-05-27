@@ -85,6 +85,14 @@
     }
     .btn-dl:hover { opacity: .9; transform: translateY(-1px); }
 
+    .btn-dl-secondary {
+      background: transparent; color: var(--sub); border: 1.5px solid var(--border);
+      border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: .85rem; font-weight: 600;
+      padding: .6rem 1.5rem; cursor: pointer; width: 100%; max-width: 340px;
+      transition: opacity .2s, border-color .2s; display: flex; align-items: center; justify-content: center; gap: .4rem;
+    }
+    .btn-dl-secondary:hover { border-color: var(--sub); opacity: .8; }
+
     /* ── info panel ── */
     .info-panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
     .info-panel h3 { font-size: 1rem; font-weight: 700; color: var(--green); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -175,8 +183,11 @@
       <div class="story-wrap">
         <canvas id="storyCanvas"></canvas>
       </div>
-      <button class="btn-dl" id="btnDl" onclick="downloadStory()">
-        ⬇️ Descargar imagen
+      <button class="btn-dl" id="btnDl" onclick="shareOrDownload()">
+        📤 Compartir imagen
+      </button>
+      <button class="btn-dl-secondary" id="btnDlSecondary" onclick="downloadOnly()" style="display:none">
+        ⬇️ Solo descargar
       </button>
     </div>
     <div class="info-panel" id="infoPanel">
@@ -242,6 +253,7 @@ async function fetchLote() {
     document.getElementById('outputArea').classList.add('visible');
     document.getElementById('customizeCard').classList.add('visible');
     setLoading(false);
+    updateShareButton();
   } catch (e) {
     setLoading(false);
     showError('Error: ' + e.message);
@@ -551,11 +563,67 @@ function showError(errMsg) {
   msg.classList.add('visible', 'error');
 }
 
-function downloadStory() {
+/* ── SHARE / DOWNLOAD ── */
+function updateShareButton() {
+  // Check if native share with files is supported (mobile browsers)
+  const canvas = document.getElementById('storyCanvas');
+  canvas.toBlob((blob) => {
+    const file = new File([blob], 'story.png', { type: 'image/png' });
+    const canShareFiles = navigator.share && navigator.canShare && navigator.canShare({ files: [file] });
+    const btn = document.getElementById('btnDl');
+    const btnSec = document.getElementById('btnDlSecondary');
+    if (canShareFiles) {
+      btn.innerHTML = '📤 Compartir en WhatsApp / Instagram';
+      btnSec.style.display = 'flex'; // show secondary download button
+    } else {
+      btn.innerHTML = '⬇️ Descargar imagen';
+      btnSec.style.display = 'none';
+    }
+  }, 'image/png');
+}
+
+async function shareOrDownload() {
+  const canvas = document.getElementById('storyCanvas');
+  const slug = loteData?.sku || 'lote';
+  const filename = `dcac-story-${slug}.png`;
+
+  canvas.toBlob(async (blob) => {
+    const file = new File([blob], filename, { type: 'image/png' });
+
+    // Try native share (opens WhatsApp, Instagram, etc.)
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: loteData?.title || 'Lote deCampoaCampo',
+          text: `🐄 Ver lote: ${loteData?.url || 'decampoacampo.com'}`,
+        });
+        return; // shared successfully
+      } catch (e) {
+        if (e.name === 'AbortError') return; // user cancelled, do nothing
+        // fallthrough to download
+      }
+    }
+
+    // Fallback: download
+    downloadBlob(blob, filename);
+  }, 'image/png');
+}
+
+function downloadOnly() {
+  const canvas = document.getElementById('storyCanvas');
+  canvas.toBlob((blob) => {
+    downloadBlob(blob, `dcac-story-${loteData?.sku || 'lote'}.png`);
+  }, 'image/png');
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.download = `dcac-story-${loteData?.sku || 'lote'}.png`;
-  link.href = document.getElementById('storyCanvas').toDataURL('image/png');
+  link.download = filename;
+  link.href = url;
   link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 </script>
 </body>

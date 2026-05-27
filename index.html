@@ -156,23 +156,13 @@
   <!-- Customize -->
   <div class="customize-card" id="customizeCard">
     <h3>✏️ Personalizar</h3>
-    <div class="cust-grid">
-      <div class="cust-field" style="grid-column: span 2;">
-        <label>Mensaje extra (opcional)</label>
-        <textarea id="custMsg" placeholder="Ej: Disponible ahora · Consultá sin compromiso" oninput="redraw()"></textarea>
-      </div>
-      <div class="cust-field">
-        <label>WhatsApp / teléfono</label>
-        <input type="text" id="custPhone" placeholder="+54 9 11 1234-5678" oninput="redraw()" />
-      </div>
-      <div class="cust-field">
-        <label>Nombre / empresa</label>
-        <input type="text" id="custName" placeholder="Tu nombre o empresa" oninput="redraw()" />
-      </div>
-      <div class="cust-field" style="grid-column: span 2;">
-        <label>Tema de color</label>
-        <div class="theme-selector" id="themeSelector"></div>
-      </div>
+    <div class="cust-field" style="margin-bottom:.8rem">
+      <label>Tema de color</label>
+      <div class="theme-selector" id="themeSelector"></div>
+    </div>
+    <div class="cust-field">
+      <label>Mensaje extra (opcional)</label>
+      <textarea id="custMsg" placeholder="Ej: Disponible ahora · Consultá sin compromiso" oninput="redraw()"></textarea>
     </div>
     <button class="btn-regen" onclick="redraw()">🔄 Regenerar preview</button>
   </div>
@@ -201,14 +191,13 @@
 <script>
 /* ── THEMES ── */
 const THEMES = [
-  { id:'campo',  label:'Campo',   bg:['#0d2b0f','#1a4d1a'],  accent:'#4ade80', text:'#e0ffe8', bar:'#27ae60' },
-  { id:'cielo',  label:'Cielo',   bg:['#0a1628','#1a3a5c'],  accent:'#60b0ff', text:'#e8f4ff', bar:'#2980b9' },
-  { id:'tierra', label:'Tierra',  bg:['#2b1a0a','#4d3010'],  accent:'#f0a030', text:'#fff5e0', bar:'#c87820' },
-  { id:'noche',  label:'Noche',   bg:['#0d0d14','#1a1a2e'],  accent:'#c084fc', text:'#f0e8ff', bar:'#7c3aed' },
-  { id:'fuego',  label:'Fuego',   bg:['#2b0a0a','#4d1010'],  accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
+  { id:'cielo',  label:'Azul',    bg:['#0a1628','#1a3a5c'],  accent:'#60b0ff', text:'#e8f4ff', bar:'#2980b9' },
+  { id:'campo',  label:'Verde',   bg:['#0d2b0f','#1a4d1a'],  accent:'#4ade80', text:'#e0ffe8', bar:'#27ae60' },
+  { id:'tierra', label:'Amarillo',bg:['#2b1a0a','#4d3010'],  accent:'#f0c030', text:'#fff5e0', bar:'#c87820' },
+  { id:'fuego',  label:'Rojo',    bg:['#2b0a0a','#4d1010'],  accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
 ];
-const themeColors = ['#27ae60','#2980b9','#c87820','#7c3aed','#dc2626'];
-const DEFAULT_THEME_IDX = 1; // cielo (azul)
+const themeColors = ['#2980b9','#27ae60','#c87820','#dc2626'];
+const DEFAULT_THEME_IDX = 0; // Azul
 let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
 let cachedImg = null;
@@ -540,7 +529,7 @@ function drawStory(ctx, d, img, theme) {
   if (d.cabezas) statCard(30, d.cabezas, 'CABEZAS');
   if (d.peso)    statCard(30 + statW + 30, d.peso, 'PESO PROM.');
 
-  y += 170;
+  y += 220; // extra gap so raza text baseline clears the stat card bottom
 
   /* raza — wrapText returns final Y so we advance correctly even on 2+ lines */
   if (d.raza) {

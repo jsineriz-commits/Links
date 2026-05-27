@@ -212,6 +212,21 @@ const DEFAULT_THEME_IDX = 1; // cielo (azul)
 let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
 let cachedImg = null;
+let logoImg   = null;
+
+// Pre-load dcac logo via image proxy
+(async () => {
+  const logoUrl = 'https://www.decampoacampo.com/imagenes/logo_dcac.svg';
+  try {
+    logoImg = await new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload  = () => res(img);
+      img.onerror = rej;
+      img.src = `/api/image?url=${encodeURIComponent(logoUrl)}`;
+    });
+  } catch (e) { logoImg = null; } // fallback: emoji text
+})();
 
 THEMES.forEach((t, i) => {
   const btn = document.createElement('button');
@@ -442,9 +457,20 @@ function drawStory(ctx, d, img, theme) {
   roundRect(ctx, 0, 0, W, 90, 0); ctx.fill();
 
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 36px Outfit, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('🐄 deCampoaCampo', 50, 58);
+  if (logoImg) {
+    // Draw actual dcac logo icon
+    const lSize = 62;
+    const lY    = (90 - lSize) / 2;
+    ctx.save();
+    ctx.beginPath(); roundRect(ctx, 18, lY, lSize, lSize, 10); ctx.clip();
+    ctx.drawImage(logoImg, 18, lY, lSize, lSize);
+    ctx.restore();
+    ctx.font = 'bold 36px Outfit, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('deCampoaCampo', 96, 58);
+  } else {
+    ctx.font = 'bold 36px Outfit, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('\uD83D\uDC04 deCampoaCampo', 50, 58);
+  }
 
   if (d.sku) {
     const pill = `Lote #${d.sku}`;
@@ -458,7 +484,7 @@ function drawStory(ctx, d, img, theme) {
 
   /* photo */
   const photoTop = 120;
-  const photoH   = Math.round(H * 0.42);
+  const photoH   = Math.round(H * 0.36);
 
   ctx.save();
   roundRect(ctx, 30, photoTop, W - 60, photoH, 24);
@@ -516,30 +542,28 @@ function drawStory(ctx, d, img, theme) {
 
   y += 170;
 
-  /* raza */
+  /* raza — wrapText returns final Y so we advance correctly even on 2+ lines */
   if (d.raza) {
     ctx.textAlign = 'left'; ctx.fillStyle = theme.text;
     ctx.font = 'bold 34px Outfit, sans-serif';
-    wrapText(ctx, '🐂 ' + d.raza, 50, y, W - 100, 42);
-    y += 54;
+    const razaEndY = wrapText(ctx, d.raza, 50, y, W - 100, 46);
+    y = razaEndY + 50;
   }
 
-  /* zona */
+  /* zona — also wraps if needed */
   if (d.zona) {
-    ctx.fillStyle = theme.text + 'aa'; ctx.font = '30px Outfit, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('📍 ' + d.zona, 50, y + 36);
-    y += 52;
+    ctx.fillStyle = theme.text + 'aa'; ctx.font = '28px Outfit, sans-serif'; ctx.textAlign = 'left';
+    const zonaEndY = wrapText(ctx, '📍 ' + d.zona, 50, y, W - 100, 38);
+    y = zonaEndY + 48;
   }
-
-  y += 16;
 
   /* price */
   if (d.price) {
     ctx.fillStyle = theme.bar + 'aa';
-    roundRect(ctx, 30, y, W - 60, 100, 16); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 42px Outfit, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('💰 ' + d.price + ' / cabeza', W / 2, y + 63);
-    y += 120;
+    roundRect(ctx, 30, y, W - 60, 110, 16); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 44px Outfit, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('💰 ' + d.price + ' / cabeza', W / 2, y + 70);
+    y += 130;
   }
 
   /* custom msg */
@@ -549,23 +573,15 @@ function drawStory(ctx, d, img, theme) {
     y += 60;
   }
 
-  /* bottom bar */
-  const bottomH = 140;
-  const bottomY = H - bottomH;
-  ctx.fillStyle = theme.bar + 'ee';
-  roundRect(ctx, 0, bottomY, W, bottomH, 0); ctx.fill();
-
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 28px Outfit, sans-serif'; ctx.textAlign = 'center';
-  const shortUrl = d.url.replace('https://www.', '').replace('https://', '');
-  ctx.fillText('🔗 ' + (shortUrl.length > 48 ? shortUrl.substring(0, 48) + '…' : shortUrl), W / 2, bottomY + 44);
-
+  /* bottom bar — only shown when user provided contact info */
   const bottomLine = [name, phone].filter(Boolean).join('   ·   ');
   if (bottomLine) {
-    ctx.fillStyle = theme.accent; ctx.font = 'bold 36px Outfit, sans-serif';
-    ctx.fillText(bottomLine, W / 2, bottomY + 102);
-  } else {
-    ctx.fillStyle = theme.accent + 'aa'; ctx.font = '28px Outfit, sans-serif';
-    ctx.fillText('Consultá disponibilidad →', W / 2, bottomY + 102);
+    const bottomH = 130;
+    const bottomY = H - bottomH;
+    ctx.fillStyle = theme.bar + 'ee';
+    roundRect(ctx, 0, bottomY, W, bottomH, 0); ctx.fill();
+    ctx.fillStyle = theme.accent; ctx.font = 'bold 40px Outfit, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(bottomLine, W / 2, bottomY + 78);
   }
 }
 
@@ -584,6 +600,7 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// Returns the Y of the LAST line drawn (so callers can advance correctly)
 function wrapText(ctx, text, x, y, maxW, lineH) {
   const words = text.split(' ');
   let line = '', curY = y;
@@ -591,10 +608,12 @@ function wrapText(ctx, text, x, y, maxW, lineH) {
     const test = line + word + ' ';
     if (ctx.measureText(test).width > maxW && line) {
       ctx.fillText(line.trim(), x, curY);
-      line = word + ' '; curY += lineH;
+      line = word + ' ';
+      curY += lineH;
     } else { line = test; }
   }
-  ctx.fillText(line.trim(), x, curY);
+  if (line.trim()) ctx.fillText(line.trim(), x, curY);
+  return curY; // ← final Y for proper spacing
 }
 
 function setLoading(on) {

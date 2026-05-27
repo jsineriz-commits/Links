@@ -24,13 +24,13 @@ function fetchUrl(urlStr, redirectsLeft = 8) {
     };
 
     const req = lib.request(options, (res) => {
-      // Follow HTTP redirects, resolving relative Location headers
+      // Follow HTTP redirects
       if (res.statusCode >= 301 && res.statusCode <= 308 && res.headers.location) {
         let loc = res.headers.location;
         if (!loc.startsWith('http')) {
           loc = new URL(loc, parsed.origin).href;
         }
-        res.resume(); // drain the body so the socket is freed
+        res.resume();
         return fetchUrl(loc, redirectsLeft - 1).then(resolve).catch(reject);
       }
 
@@ -49,19 +49,46 @@ function fetchUrl(urlStr, redirectsLeft = 8) {
   });
 }
 
-// Extract a meta tag value using regex (fast, no DOM)
-function rxMeta(html, prop) {
-  const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
-  const r2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
-  const m = html.match(r1) || html.match(r2);
-  return m ? m[1].trim() : '';
+// Check if the HTML has useful og:tags
+function hasOgData(html) {
+  return /<meta[^>]+property=["']og:title["'][^>]+content=["'][^"']{3,}/i.test(html) ||
+         /<meta[^>]+content=["'][^"']{3,}["'][^>]+property=["']og:title["']/i.test(html);
 }
 
-function rxLink(html, rel) {
-  const r = new RegExp(`<link[^>]+rel=["']${rel}["'][^>]+href=["']([^"']+)["']`, 'i');
-  const r2 = new RegExp(`<link[^>]+href=["']([^"']+)["'][^>]+rel=["']${rel}["']`, 'i');
-  const m = html.match(r) || html.match(r2);
-  return m ? m[1].trim() : '';
+// Extract JavaScript redirect URL: window.location.href = '...' or window.location = '...'
+function extractJsRedirect(html, baseUrl) {
+  const patterns = [
+    /window\.location\.href\s*=\s*['"]([^'"]+)['"]/i,
+    /window\.location\s*=\s*['"]([^'"]+)['"]/i,
+    /location\.replace\s*\(\s*['"]([^'"]+)['"]\s*\)/i,
+    /location\.href\s*=\s*['"]([^'"]+)['"]/i,
+  ];
+  for (const pat of patterns) {
+    const m = html.match(pat);
+    if (m && m[1]) {
+      let url = m[1].trim();
+      if (!url.startsWith('http')) {
+        url = new URL(url, new URL(baseUrl).origin).href;
+      }
+      // Make sure it's the same domain
+      if (url.includes('decampoacampo.com')) return url;
+    }
+  }
+  return null;
+}
+
+// Extract canonical URL from <link rel="canonical"> or og:url
+function extractCanonical(html, baseUrl) {
+  const r1 = /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i;
+  const r2 = /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i;
+  const r3 = /<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i;
+  const r4 = /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:url["']/i;
+  const m = html.match(r1) || html.match(r2) || html.match(r3) || html.match(r4);
+  if (!m) return null;
+  let url = m[1].trim();
+  if (!url.startsWith('http')) url = new URL(url, new URL(baseUrl).origin).href;
+  if (url.includes('decampoacampo.com') && url !== baseUrl) return url;
+  return null;
 }
 
 module.exports = async function handler(req, res) {
@@ -82,18 +109,20 @@ module.exports = async function handler(req, res) {
     let html = result.body.toString('utf-8');
     let finalUrl = result.finalUrl;
 
-    // Step 2: if the page has no og:title/og:image, look for a canonical URL and re-fetch
-    const hasData = rxMeta(html, 'og:title') || rxMeta(html, 'og:image');
-    if (!hasData) {
-      const canonical = rxLink(html, 'canonical') || rxMeta(html, 'og:url');
-      if (canonical && canonical !== url && canonical !== finalUrl) {
+    // Step 2: if no og:data, try JS redirect first, then canonical
+    if (!hasOgData(html)) {
+      const jsRedirect = extractJsRedirect(html, url);
+      const canonical  = extractCanonical(html, url);
+      const target = jsRedirect || canonical;
+
+      if (target) {
         try {
-          const r2 = await fetchUrl(canonical);
+          const r2 = await fetchUrl(target);
           if (r2.status >= 200 && r2.status < 400) {
-            html = r2.body.toString('utf-8');
+            html     = r2.body.toString('utf-8');
             finalUrl = r2.finalUrl;
           }
-        } catch (e) { /* ignore, keep original html */ }
+        } catch (e) { /* keep original */ }
       }
     }
 

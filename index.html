@@ -426,27 +426,29 @@ function drawStory(ctx, d, img, theme) {
   ctx.beginPath(); ctx.arc(W * .10, H * .75, 280, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  /* top bar */
+  /* top bar — starts at y=80 to leave safe zone for profile pic on WhatsApp/Instagram */
+  const topBarY = 80;
+  const topBarH = 100;
   ctx.fillStyle = theme.bar + 'cc';
-  roundRect(ctx, 0, 0, W, 90, 0); ctx.fill();
+  roundRect(ctx, 0, topBarY, W, topBarH, 0); ctx.fill();
 
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 38px Outfit, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('deCampoaCampo', 50, 58);
+  ctx.fillText('deCampoaCampo', 50, topBarY + 64);
 
   if (d.sku) {
     const pill = `Lote #${d.sku}`;
     ctx.font = 'bold 28px Outfit, sans-serif';
     const tw = ctx.measureText(pill).width + 40;
     ctx.fillStyle = theme.accent + 'dd';
-    roundRect(ctx, W - tw - 40, 18, tw, 54, 12); ctx.fill();
+    roundRect(ctx, W - tw - 40, topBarY + 18, tw, 54, 12); ctx.fill();
     ctx.fillStyle = '#111'; ctx.textAlign = 'right';
-    ctx.fillText(pill, W - 60, 53);
+    ctx.fillText(pill, W - 60, topBarY + 53);
   }
 
-  /* photo */
-  const photoTop = 120;
+  /* photo — starts just below the top bar */
+  const photoTop = topBarY + topBarH + 20;
   const photoH   = Math.round(H * 0.36);
 
   ctx.save();
@@ -515,25 +517,27 @@ function drawStory(ctx, d, img, theme) {
 
   /* zona — also wraps if needed */
   if (d.zona) {
-    ctx.fillStyle = theme.text + 'aa'; ctx.font = '28px Outfit, sans-serif'; ctx.textAlign = 'left';
-    const zonaEndY = wrapText(ctx, '📍 ' + d.zona, 50, y, W - 100, 38);
-    y = zonaEndY + 48;
+    ctx.fillStyle = theme.text + 'bb'; ctx.font = '34px Outfit, sans-serif'; ctx.textAlign = 'left';
+    const zonaEndY = wrapText(ctx, '📍 ' + d.zona, 50, y, W - 100, 42);
+    y = zonaEndY + 52;
   }
 
   /* price */
   if (d.price) {
     ctx.fillStyle = theme.bar + 'aa';
     roundRect(ctx, 30, y, W - 60, 110, 16); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 44px Outfit, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('💰 ' + d.price + ' / cabeza', W / 2, y + 70);
-    y += 130;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 46px Outfit, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(d.price + ' / cabeza', W / 2, y + 72);
+    y += 136;
   }
 
-  /* custom msg */
+  /* custom msg — centered, bigger, more padding */
   if (msg) {
-    ctx.fillStyle = theme.text + 'cc'; ctx.font = 'italic 30px Outfit, sans-serif'; ctx.textAlign = 'center';
-    wrapText(ctx, msg, W / 2, y, W - 100, 38);
-    y += 60;
+    ctx.fillStyle = theme.text + 'dd';
+    ctx.font = 'italic 38px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    const msgEndY = wrapText(ctx, msg, W / 2, y + 20, W - 120, 50);
+    y = msgEndY + 40;
   }
 
   /* bottom bar — only shown when user provided contact info */

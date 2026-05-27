@@ -252,13 +252,9 @@ async function fetchLote() {
 
     loteData = parseHTML(html, finalUrl);
 
-    // Validate we got useful data
+    // Show soft warning if very little data found (don't block — show whatever we have)
     if (!loteData.title && !loteData.image && !loteData.sku) {
-      throw new Error(
-        'No se encontraron datos del lote.\n' +
-        'Usá el link largo, por ejemplo:\n' +
-        'decampoacampo.com/__dcac/25-Vacas-CUT-Prenadas-480kg-invernada-31667'
-      );
+      showError('⚠️ Datos limitados — el link corto no devolvió información completa. Probá con el link largo de la página del lote.');
     }
 
     renderInfo(loteData);

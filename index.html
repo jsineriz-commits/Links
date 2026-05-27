@@ -249,12 +249,18 @@ async function fetchLote() {
 
     loteData = parseHTML(html, raw);
     renderInfo(loteData);
+
+    // Wait for fonts before drawing canvas (critical on mobile)
+    await document.fonts.ready;
     await renderCanvas(loteData);
 
     document.getElementById('outputArea').classList.add('visible');
     document.getElementById('customizeCard').classList.add('visible');
     setLoading(false);
     updateShareButton();
+
+    // Safety redraw after 1.5s in case fonts/image were still loading on mobile
+    setTimeout(() => { if (loteData) redraw(); }, 1500);
   } catch (e) {
     setLoading(false);
     showError('Error: ' + e.message);
@@ -263,27 +269,51 @@ async function fetchLote() {
 
 document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchLote(); });
 
-/* ── PARSE HTML ── */
+/* ── PARSE HTML — regex-first (mobile safe) ── */
 function parseHTML(html, url) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const meta = (prop) => {
+  // Regex extractor: works even when DOMParser strips/misparses tags on iOS
+  function rxMeta(prop) {
+    // property="..." content="..."
+    const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
+    // content="..." property="..."  (reversed attribute order)
+    const r2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
+    const m = html.match(r1) || html.match(r2);
+    return m ? decodeHtmlEntities(m[1].trim()) : '';
+  }
+
+  function decodeHtmlEntities(s) {
+    return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+  }
+
+  // Also try DOMParser as secondary confirm
+  let doc = null;
+  try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch(e) {}
+  function domMeta(prop) {
+    if (!doc) return '';
     const el = doc.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`);
     return el ? (el.getAttribute('content') || '') : '';
-  };
+  }
 
-  const title       = meta('og:title') || doc.querySelector('title')?.textContent || '';
-  const description = meta('og:description') || meta('description') || '';
-  const image       = meta('og:image') || meta('twitter:image') || '';
+  const title       = rxMeta('og:title')       || domMeta('og:title')       || (() => { const m = html.match(/<title[^>]*>([^<]+)<\/title>/i); return m ? decodeHtmlEntities(m[1].trim()) : ''; })();
+  const description = rxMeta('og:description') || domMeta('og:description') || rxMeta('description') || '';
+  const image       = rxMeta('og:image')       || domMeta('og:image')       || rxMeta('twitter:image') || '';
 
+  // JSON-LD via regex (most reliable on mobile)
   let price = '', sku = '', raza = '';
-  const ldScript = doc.querySelector('script[type="application/ld+json"]');
-  if (ldScript) {
+  const ldMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (ldMatch) {
     try {
-      const ld = JSON.parse(ldScript.textContent);
+      const ld = JSON.parse(ldMatch[1]);
       price = ld.offers?.price ? formatPrice(ld.offers.price) : '';
       sku   = ld.sku || ld.mpn || '';
       raza  = ld.brand?.name || '';
     } catch (e) {}
+  }
+
+  // Fallback: extract sku from URL slug (e.g. -31667 at end)
+  if (!sku) {
+    const skuM = url.match(/-(\d+)(?:\/)?$/);
+    if (skuM) sku = skuM[1];
   }
 
   const cabezasMatch = title.match(/^(\d+)/);
@@ -295,6 +325,8 @@ function parseHTML(html, url) {
 
   return { title, description, image, price, sku, raza, cabezas, peso, categoria, zona, url };
 }
+
+
 
 function extractCategoria(title) {
   const cats = ['Vacas CUT','Novillos','Novillitos','Vaquillonas','Terneros','Terneras','Toros','Vacas de Cría','Vacas Preñadas','Vacas'];

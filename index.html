@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Story Generator — deCampoaCampo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:   #2ecc71;
+      --green2:  #27ae60;
+      --dark:    #0d1117;
+      --card:    #161b22;
+      --card2:   #1e2530;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --sub:     #8b949e;
+      --accent:  #f0c040;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* ──── layout ──── */
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ──── header ──── */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .header .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #fff;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .35rem .9rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+    .header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 900;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #fff 30%, var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header p {
+      color: var(--sub);
+      margin-top: .6rem;
+      font-size: 1rem;
+    }
+
+    /* ──── input card ──── */
+    .input-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .input-row {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    .input-row input {
+      flex: 1;
+      min-width: 240px;
+      background: var(--dark);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: .95rem;
+      padding: .85rem 1.1rem;
+      transition: border-color .2s;
+      outline: none;
+    }
+    .input-row input:focus { border-color: var(--green); }
+    .input-row input::placeholder { color: var(--sub); }
+
+    .btn-gen {
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .95rem;
+      font-weight: 700;
+      padding: .85rem 1.8rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .2s, transform .15s;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .btn-gen:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    .btn-gen:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ──── status / error ──── */
+    .status-msg {
+      margin-top: 1rem;
+      font-size: .9rem;
+      color: var(--sub);
+      display: none;
+      align-items: center;
+      gap: .5rem;
+    }
+    .status-msg.visible { display: flex; }
+    .status-msg.error { color: #f85149; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ──── two-column output ──── */
+    .output-area {
+      display: none;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .output-area.visible {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 700px) {
+      .output-area.visible { grid-template-columns: 1fr; }
+    }
+
+    /* ──── preview panel ──── */
+    .preview-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    /* 9:16 wrapper */
+    .story-wrap {
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 9/16;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px #00000088;
+      position: relative;
+    }
+    #storyCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .btn-dl {
+      background: linear-gradient(135deg, var(--accent), #e6a800);
+      color: #111;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      padding: .9rem 2rem;
+      cursor: pointer;
+      width: 100%;
+      max-width: 340px;
+      transition: opacity .2s, transform .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+    }
+    .btn-dl:hover { opacity: .9; transform: translateY(-1px); }
+
+    /* ──── info panel ──── */
+    .info-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+    .info-panel h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--border);
+      gap: 1rem;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--sub); font-size: .85rem; flex-shrink: 0; }
+    .info-value { font-size: .9rem; font-weight: 600; text-align: right; word-break: break-word; }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+    .tag {
+      background: #1a3a2a;
+      border: 1px solid var(--green2);
+      color: var(--green);
+      font-size: .75rem;
+      font-weight: 600;
+      padding: .25rem .7rem;
+      border-radius: 999px;
+    }
+
+    /* ──── customize panel ──── */
+    .customize-card {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      display: none;
+    }
+    .customize-card.visible { display: block; }
+    .customize-card h3 {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 1rem;
+    }
+    .cust-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .cust-field label {
+      display: block;
+      font-size: .8rem;
+      color: var(--sub);
+      margin-bottom: .35rem;
+    }
+    .cust-field input[type=text],
+    .cust-field input[type=number],
+    .cust-field textarea {
+      width: 100%;
+      background: var(--dark);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: .88rem;
+      padding: .6rem .85rem;
+      outline: none;
+      transition: border-color .2s;
+      resize: vertical;
+    }
+    .cust-field textarea { min-height: 70px; }
+    .cust-field input:focus,
+    .cust-field textarea:focus { border-color: var(--green); }
+
+    .theme-selector {
+      display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .3rem;
+    }
+    .theme-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color .2s, transform .15s;
+    }
+    .theme-btn:hover, .theme-btn.active { border-color: #fff; transform: scale(1.1); }
+
+    .btn-regen {
+      margin-top: 1rem;
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      padding: .65rem 1.5rem;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-regen:hover { border-color: var(--green); background: #1a3a2a; color: var(--green); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="badge">🐄 Story Generator</div>
+    <h1>Generador de Stories<br>para WhatsApp e Instagram</h1>
+    <p>Pegá el link de deCampoaCampo y descargá tu publicación lista para compartir</p>
+  </header>
+
+  <!-- Input -->
+  <div class="input-card">
+    <div class="input-row">
+      <input
+        id="urlInput"
+        type="url"
+        placeholder="https://www.decampoacampo.com/__dcac/25-Vacas-CUT-Prenadas-..."
+        autocomplete="off"
+      />
+      <button class="btn-gen" id="btnGen" onclick="fetchLote()">
+        <span>🚀</span> Generar Story
+      </button>
+    </div>
+    <div class="status-msg" id="statusMsg">
+      <div class="spinner" id="spinner"></div>
+      <span id="statusText">Cargando datos del lote…</span>
+    </div>
+  </div>
+
+  <!-- Customize -->
+  <div class="customize-card" id="customizeCard">
+    <h3>✏️ Personalizar</h3>
+    <div class="cust-grid">
+      <div class="cust-field" style="grid-column: span 2;">
+        <label>Mensaje extra (opcional)</label>
+        <textarea id="custMsg" placeholder="Ej: Disponible ahora · Consultá sin compromiso" oninput="redraw()"></textarea>
+      </div>
+      <div class="cust-field">
+        <label>WhatsApp / teléfono</label>
+        <input type="text" id="custPhone" placeholder="+54 9 11 1234-5678" oninput="redraw()" />
+      </div>
+      <div class="cust-field">
+        <label>Nombre / empresa</label>
+        <input type="text" id="custName" placeholder="Tu nombre o empresa" oninput="redraw()" />
+      </div>
+      <div class="cust-field" style="grid-column: span 2;">
+        <label>Tema de color</label>
+        <div class="theme-selector" id="themeSelector"></div>
+      </div>
+    </div>
+    <button class="btn-regen" onclick="redraw()">🔄 Regenerar preview</button>
+  </div>
+
+  <!-- Output -->
+  <div class="output-area" id="outputArea">
+    <!-- Canvas preview -->
+    <div class="preview-panel">
+      <div class="story-wrap">
+        <canvas id="storyCanvas"></canvas>
+      </div>
+      <button class="btn-dl" id="btnDl" onclick="downloadStory()">
+        ⬇️ Descargar imagen
+      </button>
+    </div>
+
+    <!-- Info panel -->
+    <div class="info-panel" id="infoPanel">
+      <h3>📋 Datos del Lote</h3>
+      <div id="infoRows"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ======================================================
+   THEMES
+====================================================== */
+const THEMES = [
+  { id:'campo',  label:'Campo',   bg:['#0d2b0f','#1a4d1a'],   accent:'#4ade80', text:'#e0ffe8', bar:'#27ae60' },
+  { id:'cielo',  label:'Cielo',   bg:['#0a1628','#1a3a5c'],   accent:'#60b0ff', text:'#e8f4ff', bar:'#2980b9' },
+  { id:'tierra', label:'Tierra',  bg:['#2b1a0a','#4d3010'],   accent:'#f0a030', text:'#fff5e0', bar:'#c87820' },
+  { id:'noche',  label:'Noche',   bg:['#0d0d14','#1a1a2e'],   accent:'#c084fc', text:'#f0e8ff', bar:'#7c3aed' },
+  { id:'fuego',  label:'Fuego',   bg:['#2b0a0a','#4d1010'],   accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
+];
+
+let activeTheme = THEMES[0];
+let loteData = null;
+
+/* Build theme buttons */
+const themeColors = ['#27ae60','#2980b9','#c87820','#7c3aed','#dc2626'];
+THEMES.forEach((t,i) => {
+  const btn = document.createElement('button');
+  btn.className = 'theme-btn' + (i===0?' active':'');
+  btn.style.background = themeColors[i];
+  btn.title = t.label;
+  btn.onclick = () => {
+    document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTheme = t;
+    redraw();
+  };
+  document.getElementById('themeSelector').appendChild(btn);
+});
+
+/* ======================================================
+   FETCH LOTE DATA via allorigins proxy
+====================================================== */
+async function fetchLote() {
+  const raw = document.getElementById('urlInput').value.trim();
+  if (!raw) { showError('Ingresá un link de deCampoaCampo'); return; }
+  if (!raw.includes('decampoacampo.com')) { showError('El link debe ser de decampoacampo.com'); return; }
+
+  setLoading(true);
+  loteData = null;
+
+  try {
+    // Use allorigins to bypass CORS
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(raw)}`;
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error('No se pudo conectar al proxy');
+    const json = await res.json();
+    const html = json.contents;
+    if (!html) throw new Error('Respuesta vacía del proxy');
+
+    loteData = parseHTML(html, raw);
+    renderInfo(loteData);
+    renderCanvas(loteData);
+
+    document.getElementById('outputArea').classList.add('visible');
+    document.getElementById('customizeCard').classList.add('visible');
+    setLoading(false);
+  } catch(e) {
+    setLoading(false);
+    showError('Error al cargar: ' + e.message);
+  }
+}
+
+/* Allow Enter key */
+document.getElementById('urlInput').addEventListener('keydown', e => { if(e.key==='Enter') fetchLote(); });
+
+/* ======================================================
+   PARSE HTML for meta tags
+====================================================== */
+function parseHTML(html, url) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const meta = (prop, attr='content') => {
+    const el = doc.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`);
+    return el ? el.getAttribute(attr) : '';
+  };
+
+  const title = meta('og:title') || doc.querySelector('title')?.textContent || '';
+  const description = meta('og:description') || meta('description') || '';
+  const image = meta('og:image') || meta('twitter:image') || '';
+
+  // Parse JSON-LD
+  let price = '', sku = '', raza = '';
+  const ldScript = doc.querySelector('script[type="application/ld+json"]');
+  if (ldScript) {
+    try {
+      const ld = JSON.parse(ldScript.textContent);
+      price = ld.offers?.price ? formatPrice(ld.offers.price) : '';
+      sku = ld.sku || ld.mpn || '';
+      raza = ld.brand?.name || '';
+    } catch(e) {}
+  }
+
+  // Extract from URL slug
+  const slug = url.split('/').pop() || '';
+  const parts = slug.split('-');
+
+  // Parse title for key info
+  // typical: "25 Vacas CUT Preñadas Aberdeen Angus Negro y Colorado de 480kg"
+  const cabezasMatch = title.match(/^(\d+)/);
+  const cabezas = cabezasMatch ? cabezasMatch[1] : '';
+  const pesoMatch = title.match(/(\d+)\s*kg/i);
+  const peso = pesoMatch ? pesoMatch[1] + ' kg' : '';
+  const categoria = extractCategoria(title);
+  const zona = extractZona(description);
+
+  return { title, description, image, price, sku, raza, cabezas, peso, categoria, zona, url };
+}
+
+function extractCategoria(title) {
+  const cats = ['Vacas CUT','Novillos','Novillitos','Vaquillonas','Terneros','Terneras','Toros','Vacas de Cría','Vacas Preñadas'];
+  for (const c of cats) {
+    if (title.toLowerCase().includes(c.toLowerCase())) return c;
+  }
+  // fallback: words 2..n until a number/raza
+  const words = title.split(' ');
+  return words.slice(1, 4).join(' ');
+}
+
+function extractZona(desc) {
+  const zonaMatch = desc.match(/zona de ([^\.]+)/i) || desc.match(/de la zona de ([^\.]+)/i);
+  return zonaMatch ? zonaMatch[1].trim() : '';
+}
+
+function formatPrice(p) {
+  const n = parseInt(p);
+  if (isNaN(n)) return '';
+  return '$' + n.toLocaleString('es-AR');
+}
+
+/* ======================================================
+   RENDER INFO PANEL
+====================================================== */
+function renderInfo(d) {
+  const rows = [
+    ['Categoría', d.categoria],
+    ['Cabezas', d.cabezas ? d.cabezas + ' animales' : ''],
+    ['Peso promedio', d.peso],
+    ['Raza', d.raza],
+    ['Zona', d.zona],
+    ['Precio/cabeza', d.price],
+    ['ID lote', d.sku ? '#' + d.sku : ''],
+  ].filter(([,v]) => v);
+
+  document.getElementById('infoRows').innerHTML = rows.map(([l,v]) =>
+    `<div class="info-row"><span class="info-label">${l}</span><span class="info-value">${v}</span></div>`
+  ).join('');
+}
+
+/* ======================================================
+   DRAW CANVAS (9:16 = 1080×1920 internal)
+====================================================== */
+const CANVAS_W = 1080;
+const CANVAS_H = 1920;
+
+async function renderCanvas(d) {
+  const canvas = document.getElementById('storyCanvas');
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext('2d');
+
+  // Load image via proxy
+  let img = null;
+  if (d.image) {
+    try {
+      img = await loadImage(d.image);
+    } catch(e) {
+      try {
+        const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(d.image)}`;
+        img = await loadImage(proxied);
+      } catch(e2) { img = null; }
+    }
+  }
+
+  drawStory(ctx, d, img, activeTheme);
+}
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+
+function redraw() {
+  if (!loteData) return;
+  const canvas = document.getElementById('storyCanvas');
+  const ctx = canvas.getContext('2d');
+  // re-get image from cached src
+  const img = document.getElementById('_cachedImg');
+  drawStory(ctx, loteData, img, activeTheme);
+}
+
+function drawStory(ctx, d, img, theme) {
+  const W = CANVAS_W, H = CANVAS_H;
+  const phone = document.getElementById('custPhone')?.value.trim() || '';
+  const name  = document.getElementById('custName')?.value.trim()  || '';
+  const msg   = document.getElementById('custMsg')?.value.trim()   || '';
+
+  // ── Background gradient ──
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, theme.bg[0]);
+  grad.addColorStop(1, theme.bg[1]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Subtle texture circles ──
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = theme.accent;
+  ctx.beginPath(); ctx.arc(W*0.85, H*0.1, 350, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W*0.1, H*0.75, 280, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // ── Top bar with logo area ──
+  const barH = 90;
+  ctx.fillStyle = theme.bar + 'cc';
+  roundRect(ctx, 0, 0, W, barH, 0);
+  ctx.fill();
+
+  // Logo text
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 36px Outfit, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('🐄 deCampoaCampo', 50, 58);
+
+  // Lote ID pill
+  if (d.sku) {
+    const pill = `Lote #${d.sku}`;
+    ctx.font = 'bold 28px Outfit, sans-serif';
+    const tw = ctx.measureText(pill).width + 40;
+    ctx.fillStyle = theme.accent + 'dd';
+    roundRect(ctx, W - tw - 40, 18, tw, 54, 12);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.textAlign = 'right';
+    ctx.fillText(pill, W - 60, 53);
+  }
+
+  // ── Photo area (top half-ish) ──
+  const photoTop = barH + 30;
+  const photoH = Math.round(H * 0.42);
+  const radius = 24;
+
+  ctx.save();
+  roundRect(ctx, 30, photoTop, W-60, photoH, radius);
+  ctx.clip();
+
+  if (img) {
+    // cover-fit
+    const scale = Math.max((W-60)/img.width, photoH/img.height);
+    const sw = img.width * scale;
+    const sh = img.height * scale;
+    ctx.drawImage(img, 30 + ((W-60)-sw)/2, photoTop + (photoH-sh)/2, sw, sh);
+  } else {
+    ctx.fillStyle = '#1a2a1a';
+    ctx.fillRect(30, photoTop, W-60, photoH);
+    ctx.fillStyle = theme.accent + '44';
+    ctx.font = '120px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐄', W/2, photoTop + photoH/2 + 40);
+  }
+
+  // Gradient overlay on bottom of photo
+  const photoGrad = ctx.createLinearGradient(0, photoTop + photoH*0.5, 0, photoTop + photoH);
+  photoGrad.addColorStop(0, 'transparent');
+  photoGrad.addColorStop(1, theme.bg[1] + 'ff');
+  ctx.fillStyle = photoGrad;
+  ctx.fillRect(30, photoTop, W-60, photoH);
+  ctx.restore();
+
+  // ── Categoria / tipo badge ──
+  const badgeY = photoTop + photoH - 50;
+  ctx.save();
+  ctx.font = 'bold 32px Outfit, sans-serif';
+  const catText = d.categoria.toUpperCase();
+  const catW = ctx.measureText(catText).width + 44;
+  ctx.fillStyle = theme.accent;
+  roundRect(ctx, 50, badgeY, catW, 52, 10);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.textAlign = 'left';
+  ctx.fillText(catText, 72, badgeY + 36);
+  ctx.restore();
+
+  // ── Main content area ──
+  const contentTop = photoTop + photoH + 30;
+  let y = contentTop;
+
+  // Cabezas + Peso row
+  const statsY = y;
+  const statW = (W - 60) / 2 - 15;
+
+  // Stat card 1: Cabezas
+  if (d.cabezas) {
+    ctx.fillStyle = theme.accent + '22';
+    roundRect(ctx, 30, statsY, statW, 150, 16);
+    ctx.fill();
+    ctx.strokeStyle = theme.accent + '55';
+    ctx.lineWidth = 2;
+    roundRect(ctx, 30, statsY, statW, 150, 16);
+    ctx.stroke();
+
+    ctx.fillStyle = theme.accent;
+    ctx.font = 'bold 72px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.cabezas, 30 + statW/2, statsY + 88);
+    ctx.fillStyle = theme.text + 'bb';
+    ctx.font = '28px Outfit, sans-serif';
+    ctx.fillText('CABEZAS', 30 + statW/2, statsY + 128);
+  }
+
+  // Stat card 2: Peso
+  if (d.peso) {
+    const x2 = 30 + statW + 30;
+    ctx.fillStyle = theme.accent + '22';
+    roundRect(ctx, x2, statsY, statW, 150, 16);
+    ctx.fill();
+    ctx.strokeStyle = theme.accent + '55';
+    ctx.lineWidth = 2;
+    roundRect(ctx, x2, statsY, statW, 150, 16);
+    ctx.stroke();
+
+    ctx.fillStyle = theme.accent;
+    ctx.font = 'bold 72px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.peso, x2 + statW/2, statsY + 88);
+    ctx.fillStyle = theme.text + 'bb';
+    ctx.font = '28px Outfit, sans-serif';
+    ctx.fillText('PESO PROM.', x2 + statW/2, statsY + 128);
+  }
+
+  y = statsY + 170;
+
+  // Raza
+  if (d.raza) {
+    ctx.textAlign = 'left';
+    ctx.fillStyle = theme.text;
+    ctx.font = 'bold 36px Outfit, sans-serif';
+    wrapText(ctx, '🐂 ' + d.raza, 50, y, W - 100, 42);
+    y += 50;
+  }
+
+  // Zona
+  if (d.zona) {
+    ctx.fillStyle = theme.text + 'aa';
+    ctx.font = '30px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('📍 ' + d.zona, 50, y + 36);
+    y += 50;
+  }
+
+  y += 20;
+
+  // Price
+  if (d.price) {
+    ctx.fillStyle = theme.bar + 'aa';
+    roundRect(ctx, 30, y, W - 60, 100, 16);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 42px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('💰 ' + d.price + ' / cabeza', W/2, y + 63);
+    y += 120;
+  }
+
+  // Custom message
+  if (msg) {
+    ctx.fillStyle = theme.text + 'cc';
+    ctx.font = 'italic 30px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    wrapText(ctx, msg, W/2, y, W - 100, 38, true);
+    y += 60;
+  }
+
+  // ── Bottom bar ──
+  const bottomH = 140;
+  const bottomY = H - bottomH;
+
+  ctx.fillStyle = theme.bar + 'ee';
+  roundRect(ctx, 0, bottomY, W, bottomH, 0);
+  ctx.fill();
+
+  // Link
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 30px Outfit, sans-serif';
+  ctx.textAlign = 'center';
+  const shortUrl = d.url.replace('https://www.', '').replace('https://', '');
+  ctx.fillText('🔗 ' + shortUrl.substring(0, 45) + (shortUrl.length > 45 ? '…' : ''), W/2, bottomY + 46);
+
+  // Phone / Name
+  const bottomLine = [name, phone].filter(Boolean).join('   ·   ');
+  if (bottomLine) {
+    ctx.fillStyle = theme.accent;
+    ctx.font = 'bold 34px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(bottomLine, W/2, bottomY + 100);
+  } else {
+    ctx.fillStyle = theme.accent + 'aa';
+    ctx.font = '26px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Consultá disponibilidad →', W/2, bottomY + 100);
+  }
+}
+
+/* ======================================================
+   HELPERS
+====================================================== */
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH, center = false) {
+  const words = text.split(' ');
+  let line = '';
+  let curY = y;
+  for (const word of words) {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxW && line) {
+      if (center) ctx.fillText(line.trim(), x, curY);
+      else ctx.fillText(line.trim(), x, curY);
+      line = word + ' ';
+      curY += lineH;
+    } else { line = test; }
+  }
+  ctx.fillText(line.trim(), x, curY);
+}
+
+/* ======================================================
+   UI HELPERS
+====================================================== */
+function setLoading(on) {
+  const btn = document.getElementById('btnGen');
+  const msg = document.getElementById('statusMsg');
+  const sp  = document.getElementById('spinner');
+  const txt = document.getElementById('statusText');
+  btn.disabled = on;
+  if (on) {
+    msg.classList.add('visible');
+    msg.classList.remove('error');
+    sp.style.display = 'block';
+    txt.textContent = 'Cargando datos del lote…';
+  } else {
+    msg.classList.remove('visible');
+    sp.style.display = 'none';
+  }
+}
+
+function showError(errMsg) {
+  const msg = document.getElementById('statusMsg');
+  const sp  = document.getElementById('spinner');
+  const txt = document.getElementById('statusText');
+  msg.classList.add('visible', 'error');
+  sp.style.display = 'none';
+  txt.textContent = '⚠️ ' + errMsg;
+}
+
+/* ======================================================
+   DOWNLOAD
+====================================================== */
+function downloadStory() {
+  const canvas = document.getElementById('storyCanvas');
+  const link = document.createElement('a');
+  const slug = loteData?.sku || 'story';
+  link.download = `dcac-story-${slug}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+/* ======================================================
+   Re-render after image loads — cache trick
+====================================================== */
+const origRender = renderCanvas;
+window.renderCanvas = async function(d) {
+  const canvas = document.getElementById('storyCanvas');
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext('2d');
+
+  let img = null;
+  if (d.image) {
+    // Try direct load first
+    try {
+      img = await loadImage(d.image);
+    } catch(e) {
+      try {
+        const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(d.image)}`;
+        img = await loadImage(proxied);
+      } catch(e2) { img = null; }
+    }
+  }
+
+  // Cache img element for redraws
+  let cached = document.getElementById('_cachedImg');
+  if (!cached) {
+    cached = new Image();
+    cached.id = '_cachedImg';
+    cached.style.display = 'none';
+    document.body.appendChild(cached);
+  }
+  if (img) { cached.src = img.src; cached._img = img; }
+  else { cached._img = null; }
+
+  drawStory(ctx, d, img, activeTheme);
+};
+
+// Override redraw to use cached img
+window.redraw = function() {
+  if (!loteData) return;
+  const canvas = document.getElementById('storyCanvas');
+  const ctx = canvas.getContext('2d');
+  const cached = document.getElementById('_cachedImg');
+  drawStory(ctx, loteData, cached?._img || null, activeTheme);
+};
+</script>
+</body>
+</html>

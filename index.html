@@ -191,16 +191,49 @@
 <script>
 /* ── THEMES ── */
 const THEMES = [
-  { id:'cielo',  label:'Azul',    bg:['#0a1628','#1a3a5c'],  accent:'#60b0ff', text:'#e8f4ff', bar:'#2980b9' },
-  { id:'campo',  label:'Verde',   bg:['#0d2b0f','#1a4d1a'],  accent:'#4ade80', text:'#e0ffe8', bar:'#27ae60' },
-  { id:'tierra', label:'Amarillo',bg:['#2b1a0a','#4d3010'],  accent:'#f0c030', text:'#fff5e0', bar:'#c87820' },
-  { id:'fuego',  label:'Rojo',    bg:['#2b0a0a','#4d1010'],  accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
+  { id:'cielo',   label:'Azul',    bg:['#0a1628','#1a3a5c'],  accent:'#60b0ff', text:'#e8f4ff', bar:'#2980b9' },
+  { id:'campo',   label:'Verde',   bg:['#0d2b0f','#1a4d1a'],  accent:'#4ade80', text:'#e0ffe8', bar:'#27ae60' },
+  { id:'tierra',  label:'Amarillo',bg:['#2b1a0a','#4d3010'],  accent:'#f0c030', text:'#fff5e0', bar:'#c87820' },
+  { id:'fuego',   label:'Rojo',    bg:['#2b0a0a','#4d1010'],  accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
+  { id:'naranja', label:'Naranja', bg:['#1a0e00','#3d2200'],  accent:'#fb923c', text:'#fff0e0', bar:'#ea580c' },
+  { id:'noche',   label:'Violeta', bg:['#0d0d14','#1a1a2e'],  accent:'#c084fc', text:'#f0e8ff', bar:'#7c3aed' },
+  { id:'negro',   label:'Negro',   bg:['#000000','#111111'],  accent:'#ffffff', text:'#ffffff', bar:'#222222' },
+  { id:'celeste', label:'Celeste', bg:['#001a2e','#003a5c'],  accent:'#38bdf8', text:'#e0f7ff', bar:'#0284c7' },
 ];
-const themeColors = ['#2980b9','#27ae60','#c87820','#dc2626'];
+const themeColors = ['#2980b9','#27ae60','#c87820','#dc2626','#ea580c','#7c3aed','#333333','#0284c7'];
 const DEFAULT_THEME_IDX = 0; // Azul
 let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
 let cachedImg = null;
+let logoImg   = null;
+
+// Pre-load the deCampoaCampo logo via proxy, then make it white for canvas
+(async () => {
+  try {
+    const raw = await new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload  = () => res(img);
+      img.onerror = rej;
+      img.src = `/api/image?url=${encodeURIComponent('https://www.decampoacampo.com/imagenes/logo_dcac.svg')}`;
+    });
+    // Render the SVG onto a temp canvas and recolor it white
+    const tmp = document.createElement('canvas');
+    tmp.width = 600; tmp.height = 120;
+    const tc = tmp.getContext('2d');
+    tc.drawImage(raw, 0, 0, 600, 120);
+    tc.globalCompositeOperation = 'source-in';
+    tc.fillStyle = '#ffffff';
+    tc.fillRect(0, 0, 600, 120);
+    // Convert to Image for fast reuse
+    logoImg = await new Promise((res, rej) => {
+      const img2 = new Image();
+      img2.onload = () => res(img2);
+      img2.onerror = rej;
+      img2.src = tmp.toDataURL();
+    });
+  } catch (e) { logoImg = null; }
+})();
 
 THEMES.forEach((t, i) => {
   const btn = document.createElement('button');
@@ -428,23 +461,31 @@ function drawStory(ctx, d, img, theme) {
 
   /* top bar — starts at y=80 to leave safe zone for profile pic on WhatsApp/Instagram */
   const topBarY = 80;
-  const topBarH = 100;
+  const topBarH = 110;
   ctx.fillStyle = theme.bar + 'cc';
   roundRect(ctx, 0, topBarY, W, topBarH, 0); ctx.fill();
 
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 38px Outfit, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('deCampoaCampo', 50, topBarY + 64);
+  if (logoImg) {
+    // Draw deCampoaCampo logo (pre-whitened) centered vertically in the bar
+    const lh = 70;
+    const lw = Math.round(lh * (600 / 120)); // preserve aspect ratio
+    const ly = topBarY + (topBarH - lh) / 2;
+    ctx.drawImage(logoImg, 40, ly, lw, lh);
+  } else {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 38px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('deCampoaCampo', 50, topBarY + 70);
+  }
 
   if (d.sku) {
     const pill = `Lote #${d.sku}`;
     ctx.font = 'bold 28px Outfit, sans-serif';
     const tw = ctx.measureText(pill).width + 40;
     ctx.fillStyle = theme.accent + 'dd';
-    roundRect(ctx, W - tw - 40, topBarY + 18, tw, 54, 12); ctx.fill();
+    roundRect(ctx, W - tw - 40, topBarY + 22, tw, 54, 12); ctx.fill();
     ctx.fillStyle = '#111'; ctx.textAlign = 'right';
-    ctx.fillText(pill, W - 60, topBarY + 53);
+    ctx.fillText(pill, W - 60, topBarY + 57);
   }
 
   /* photo — starts just below the top bar */
@@ -531,13 +572,13 @@ function drawStory(ctx, d, img, theme) {
     y += 136;
   }
 
-  /* custom msg — centered, bigger, more padding */
+  /* custom msg — bold, centered, large */
   if (msg) {
-    ctx.fillStyle = theme.text + 'dd';
-    ctx.font = 'italic 38px Outfit, sans-serif';
+    ctx.fillStyle = theme.text;
+    ctx.font = 'bold italic 40px Outfit, sans-serif';
     ctx.textAlign = 'center';
-    const msgEndY = wrapText(ctx, msg, W / 2, y + 20, W - 120, 50);
-    y = msgEndY + 40;
+    const msgEndY = wrapText(ctx, msg, W / 2, y + 24, W - 120, 54);
+    y = msgEndY + 44;
   }
 
   /* bottom bar — only shown when user provided contact info */

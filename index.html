@@ -201,21 +201,6 @@ const DEFAULT_THEME_IDX = 0; // Azul
 let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
 let cachedImg = null;
-let logoImg   = null;
-
-// Pre-load dcac logo via image proxy
-(async () => {
-  const logoUrl = 'https://www.decampoacampo.com/imagenes/logo_dcac.svg';
-  try {
-    logoImg = await new Promise((res, rej) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload  = () => res(img);
-      img.onerror = rej;
-      img.src = `/api/image?url=${encodeURIComponent(logoUrl)}`;
-    });
-  } catch (e) { logoImg = null; } // fallback: emoji text
-})();
 
 THEMES.forEach((t, i) => {
   const btn = document.createElement('button');
@@ -422,8 +407,8 @@ function redraw() {
 
 function drawStory(ctx, d, img, theme) {
   const W = CANVAS_W, H = CANVAS_H;
-  const phone = document.getElementById('custPhone')?.value.trim() || '';
-  const name  = document.getElementById('custName')?.value.trim()  || '';
+  const phone = '';
+  const name  = '';
   const msg   = document.getElementById('custMsg')?.value.trim()   || '';
 
   /* background */
@@ -446,20 +431,9 @@ function drawStory(ctx, d, img, theme) {
   roundRect(ctx, 0, 0, W, 90, 0); ctx.fill();
 
   ctx.fillStyle = '#fff';
-  if (logoImg) {
-    // Draw actual dcac logo icon
-    const lSize = 62;
-    const lY    = (90 - lSize) / 2;
-    ctx.save();
-    ctx.beginPath(); roundRect(ctx, 18, lY, lSize, lSize, 10); ctx.clip();
-    ctx.drawImage(logoImg, 18, lY, lSize, lSize);
-    ctx.restore();
-    ctx.font = 'bold 36px Outfit, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('deCampoaCampo', 96, 58);
-  } else {
-    ctx.font = 'bold 36px Outfit, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('\uD83D\uDC04 deCampoaCampo', 50, 58);
-  }
+  ctx.font = 'bold 38px Outfit, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('deCampoaCampo', 50, 58);
 
   if (d.sku) {
     const pill = `Lote #${d.sku}`;

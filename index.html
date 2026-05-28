@@ -208,6 +208,7 @@ let cachedImg = null;
 let logoImg   = null;
 
 // Pre-load the deCampoaCampo logo via proxy, then make it white for canvas
+// The logo's natural aspect ratio is ~6.2:1 (wide horizontal text logo)
 (async () => {
   try {
     const raw = await new Promise((res, rej) => {
@@ -217,15 +218,14 @@ let logoImg   = null;
       img.onerror = rej;
       img.src = `/api/image?url=${encodeURIComponent('https://www.decampoacampo.com/imagenes/logo_dcac.svg')}`;
     });
-    // Render the SVG onto a temp canvas and recolor it white
+    // Use 800x130 to respect the ~6.2:1 natural ratio of the logo
     const tmp = document.createElement('canvas');
-    tmp.width = 600; tmp.height = 120;
+    tmp.width = 800; tmp.height = 130;
     const tc = tmp.getContext('2d');
-    tc.drawImage(raw, 0, 0, 600, 120);
+    tc.drawImage(raw, 0, 0, 800, 130);
     tc.globalCompositeOperation = 'source-in';
     tc.fillStyle = '#ffffff';
-    tc.fillRect(0, 0, 600, 120);
-    // Convert to Image for fast reuse
+    tc.fillRect(0, 0, 800, 130);
     logoImg = await new Promise((res, rej) => {
       const img2 = new Image();
       img2.onload = () => res(img2);
@@ -440,156 +440,140 @@ function redraw() {
 
 function drawStory(ctx, d, img, theme) {
   const W = CANVAS_W, H = CANVAS_H;
-  const phone = '';
-  const name  = '';
-  const msg   = document.getElementById('custMsg')?.value.trim()   || '';
+  const msg = document.getElementById('custMsg')?.value.trim() || '';
 
-  /* background */
-  const grad = ctx.createLinearGradient(0, 0, W, H);
+  /* ── BACKGROUND ── */
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, theme.bg[0]);
   grad.addColorStop(1, theme.bg[1]);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  /* texture circles */
+  /* subtle texture */
   ctx.save();
-  ctx.globalAlpha = 0.06;
+  ctx.globalAlpha = 0.05;
   ctx.fillStyle = theme.accent;
-  ctx.beginPath(); ctx.arc(W * .85, H * .10, 350, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(W * .10, H * .75, 280, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W * .88, H * .07, 380, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W * .08, H * .82, 260, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  /* top bar — starts at y=80 to leave safe zone for profile pic on WhatsApp/Instagram */
-  const topBarY = 80;
-  const topBarH = 110;
-  ctx.fillStyle = theme.bar + 'cc';
-  roundRect(ctx, 0, topBarY, W, topBarH, 0); ctx.fill();
-
+  /* ── LOGO — small, top-left, safe zone below y=70 ── */
+  const LOGO_Y  = 74;
+  const LOGO_H  = 44;                          // height in canvas pixels
+  const LOGO_W  = Math.round(LOGO_H * (800/130)); // ~271px wide, preserving 6.2:1 ratio
   if (logoImg) {
-    // Draw deCampoaCampo logo (pre-whitened) centered vertically in the bar
-    const lh = 70;
-    const lw = Math.round(lh * (600 / 120)); // preserve aspect ratio
-    const ly = topBarY + (topBarH - lh) / 2;
-    ctx.drawImage(logoImg, 40, ly, lw, lh);
+    ctx.drawImage(logoImg, 50, LOGO_Y, LOGO_W, LOGO_H);
   } else {
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 38px Outfit, sans-serif';
+    ctx.fillStyle = '#ffffffcc';
+    ctx.font = '32px serif';
     ctx.textAlign = 'left';
-    ctx.fillText('deCampoaCampo', 50, topBarY + 70);
+    ctx.fillText('deCampoaCampo', 50, LOGO_Y + 34);
   }
 
-  if (d.sku) {
-    const pill = `Lote #${d.sku}`;
-    ctx.font = 'bold 28px Outfit, sans-serif';
-    const tw = ctx.measureText(pill).width + 40;
-    ctx.fillStyle = theme.accent + 'dd';
-    roundRect(ctx, W - tw - 40, topBarY + 22, tw, 54, 12); ctx.fill();
-    ctx.fillStyle = '#111'; ctx.textAlign = 'right';
-    ctx.fillText(pill, W - 60, topBarY + 57);
-  }
+  /* ── LOTE # and CATEGORÍA — large bold row ── */
+  const LOTE_Y = LOGO_Y + LOGO_H + 52; // baseline of the big text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 66px Outfit, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Lote #' + (d.sku || ''), 50, LOTE_Y);
+  ctx.textAlign = 'right';
+  ctx.fillText(d.categoria || '', W - 50, LOTE_Y);
 
-  /* photo — starts just below the top bar */
-  const photoTop = topBarY + topBarH + 20;
-  const photoH   = Math.round(H * 0.36);
+  /* ── PHOTO ── */
+  const PX = 30, PY = LOTE_Y + 28;
+  const PW = W - 60, PH = Math.round(H * 0.44);
 
   ctx.save();
-  roundRect(ctx, 30, photoTop, W - 60, photoH, 24);
+  roundRect(ctx, PX, PY, PW, PH, 26);
   ctx.clip();
-
   if (img) {
-    const scale = Math.max((W - 60) / img.width, photoH / img.height);
+    const scale = Math.max(PW / img.width, PH / img.height);
     const sw = img.width * scale, sh = img.height * scale;
-    ctx.drawImage(img, 30 + ((W - 60) - sw) / 2, photoTop + (photoH - sh) / 2, sw, sh);
+    ctx.drawImage(img, PX + (PW - sw) / 2, PY + (PH - sh) / 2, sw, sh);
   } else {
-    ctx.fillStyle = '#1a2a1a';
-    ctx.fillRect(30, photoTop, W - 60, photoH);
-    ctx.font = '120px serif'; ctx.textAlign = 'center'; ctx.fillStyle = theme.accent + '44';
-    ctx.fillText('🐄', W / 2, photoTop + photoH / 2 + 40);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(PX, PY, PW, PH);
+    ctx.font = '110px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = theme.accent + '44';
+    ctx.fillText('🐄', W / 2, PY + PH / 2 + 40);
   }
-
-  /* photo gradient overlay */
-  const pGrad = ctx.createLinearGradient(0, photoTop + photoH * .5, 0, photoTop + photoH);
-  pGrad.addColorStop(0, 'transparent');
-  pGrad.addColorStop(1, theme.bg[1]);
-  ctx.fillStyle = pGrad;
-  ctx.fillRect(30, photoTop, W - 60, photoH);
   ctx.restore();
 
-  /* categoria badge on photo */
-  const badgeY = photoTop + photoH - 56;
-  ctx.save();
-  ctx.font = 'bold 32px Outfit, sans-serif';
-  const catW = ctx.measureText(d.categoria.toUpperCase()).width + 44;
-  ctx.fillStyle = theme.accent;
-  roundRect(ctx, 50, badgeY, catW, 52, 10); ctx.fill();
-  ctx.fillStyle = '#111'; ctx.textAlign = 'left';
-  ctx.fillText(d.categoria.toUpperCase(), 72, badgeY + 36);
-  ctx.restore();
+  /* ── PRICE BAR — fixed at bottom, full-width, rounded top ── */
+  const PRICE_H = 168;
+  const PRICE_Y = H - PRICE_H;
+  ctx.fillStyle = theme.bar;
+  // Rounded top corners only (extend rect below canvas so bottom corners are off-screen)
+  roundRect(ctx, 0, PRICE_Y, W, PRICE_H + 40, 32); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 74px Outfit, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText((d.price || '') + ' / cabeza', W / 2, PRICE_Y + 110);
 
-  /* stats row */
-  let y = photoTop + photoH + 30;
-  const statW = (W - 60) / 2 - 15;
+  /* ── INFO ROWS — between photo and price bar ── */
+  const INFO_TOP    = PY + PH + 44;
+  const INFO_BOTTOM = PRICE_Y - 24;
+  const INFO_AVAIL  = INFO_BOTTOM - INFO_TOP;
 
-  function statCard(x, value, label) {
-    ctx.fillStyle = theme.accent + '22';
-    roundRect(ctx, x, y, statW, 150, 16); ctx.fill();
-    ctx.strokeStyle = theme.accent + '55'; ctx.lineWidth = 2;
-    roundRect(ctx, x, y, statW, 150, 16); ctx.stroke();
-    ctx.fillStyle = theme.accent;
-    ctx.font = 'bold 72px Outfit, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(value, x + statW / 2, y + 88);
-    ctx.fillStyle = theme.text + 'bb';
-    ctx.font = '28px Outfit, sans-serif';
-    ctx.fillText(label, x + statW / 2, y + 128);
-  }
+  // Build row list: only include data that exists; 🌿 only if msg provided
+  const rows = [];
+  if (d.peso)    rows.push({ em: '⚖️',  txt: d.peso + ' Promedio' });
+  if (d.cabezas) rows.push({ em: '🐂',  txt: d.cabezas + ' Cabezas' });
+  if (d.zona)    rows.push({ em: '📍',  txt: d.zona });
+  if (msg)       rows.push({ em: '🌿',  txt: msg });    // leaf emoji, bold, only if provided
 
-  if (d.cabezas) statCard(30, d.cabezas, 'CABEZAS');
-  if (d.peso)    statCard(30 + statW + 30, d.peso, 'PESO PROM.');
+  if (rows.length > 0) {
+    const ROW_H     = Math.floor(INFO_AVAIL / rows.length);
+    const EM_SIZE   = Math.min(52, Math.floor(ROW_H * 0.42));
+    const TXT_SIZE  = Math.min(40, Math.floor(ROW_H * 0.30));
+    const TXT_LINE  = TXT_SIZE * 1.32;
+    const TXT_X     = 134;
+    const TXT_MAX_W = W - TXT_X - 50;
 
-  y += 220; // extra gap so raza text baseline clears the stat card bottom
+    rows.forEach((row, i) => {
+      const rowTop = INFO_TOP + i * ROW_H;
+      const midY   = rowTop + ROW_H / 2;
 
-  /* raza — wrapText returns final Y so we advance correctly even on 2+ lines */
-  if (d.raza) {
-    ctx.textAlign = 'left'; ctx.fillStyle = theme.text;
-    ctx.font = 'bold 34px Outfit, sans-serif';
-    const razaEndY = wrapText(ctx, d.raza, 50, y, W - 100, 46);
-    y = razaEndY + 50;
-  }
+      // Separator line above each row (except first)
+      if (i > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.15;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(50, rowTop); ctx.lineTo(W - 50, rowTop);
+        ctx.stroke();
+        ctx.restore();
+      }
 
-  /* zona — also wraps if needed */
-  if (d.zona) {
-    ctx.fillStyle = theme.text + 'bb'; ctx.font = '34px Outfit, sans-serif'; ctx.textAlign = 'left';
-    const zonaEndY = wrapText(ctx, '📍 ' + d.zona, 50, y, W - 100, 42);
-    y = zonaEndY + 52;
-  }
+      // Emoji icon
+      ctx.font = `${EM_SIZE}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(row.em, 50, midY + EM_SIZE * 0.36);
 
-  /* price */
-  if (d.price) {
-    ctx.fillStyle = theme.bar + 'aa';
-    roundRect(ctx, 30, y, W - 60, 110, 16); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 46px Outfit, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(d.price + ' / cabeza', W / 2, y + 72);
-    y += 136;
-  }
+      // Text — wrap into multiple lines if needed, centered vertically
+      const isBold = row.em === '🌿'; // bold for the leaf/extra row
+      ctx.font = `${isBold ? 'bold ' : ''}${TXT_SIZE}px Outfit, sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
 
-  /* custom msg — bold, centered, large */
-  if (msg) {
-    ctx.fillStyle = theme.text;
-    ctx.font = 'bold italic 40px Outfit, sans-serif';
-    ctx.textAlign = 'center';
-    const msgEndY = wrapText(ctx, msg, W / 2, y + 24, W - 120, 54);
-    y = msgEndY + 44;
-  }
+      // Compute wrapped lines
+      const words = row.txt.split(' ');
+      const lines = [];
+      let cur = '';
+      for (const w of words) {
+        const test = cur + w + ' ';
+        if (ctx.measureText(test).width > TXT_MAX_W && cur) {
+          lines.push(cur.trim()); cur = w + ' ';
+        } else cur = test;
+      }
+      if (cur.trim()) lines.push(cur.trim());
 
-  /* bottom bar — only shown when user provided contact info */
-  const bottomLine = [name, phone].filter(Boolean).join('   ·   ');
-  if (bottomLine) {
-    const bottomH = 130;
-    const bottomY = H - bottomH;
-    ctx.fillStyle = theme.bar + 'ee';
-    roundRect(ctx, 0, bottomY, W, bottomH, 0); ctx.fill();
-    ctx.fillStyle = theme.accent; ctx.font = 'bold 40px Outfit, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(bottomLine, W / 2, bottomY + 78);
+      // Draw lines centered vertically in the row
+      const totalH  = lines.length * TXT_LINE;
+      const startY  = midY - totalH / 2 + TXT_SIZE * 0.82;
+      lines.forEach((line, li) => ctx.fillText(line, TXT_X, startY + li * TXT_LINE));
+    });
   }
 }
 

@@ -206,6 +206,48 @@ let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
 let cachedImg = null;
 let logoImg   = null;
+const iconImgs = {}; // preloaded SVG icons
+
+/* Pre-load icons as SVG data-URL → Image objects.
+   Using Font Awesome Free paths (fa-location-dot, fa-file-lines) +
+   custom SVGs for the kg weight and cow head. */
+(async () => {
+  const ICON_SVGS = {
+    kg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <path d="M34 30 A16 16 0 0 1 66 30" fill="none" stroke="white" stroke-width="7" stroke-linecap="round"/>
+      <rect x="10" y="27" width="80" height="58" rx="13" fill="none" stroke="white" stroke-width="7"/>
+      <text x="50" y="63" text-anchor="middle" dominant-baseline="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="28" fill="white">kg</text>
+    </svg>`,
+    cow: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <path d="M26 38 C16 18 24 8 32 20" fill="none" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M74 38 C84 18 76 8 68 20" fill="none" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <ellipse cx="17" cy="44" rx="10" ry="13" fill="white"/>
+      <ellipse cx="83" cy="44" rx="10" ry="13" fill="white"/>
+      <ellipse cx="50" cy="52" rx="28" ry="23" fill="white"/>
+      <ellipse cx="50" cy="65" rx="16" ry="10" fill="#c8c8c8"/>
+      <ellipse cx="44" cy="65" rx="3.5" ry="2.8" fill="#999"/>
+      <ellipse cx="56" cy="65" rx="3.5" ry="2.8" fill="#999"/>
+      <circle cx="38" cy="47" r="4" fill="#333"/>
+      <circle cx="62" cy="47" r="4" fill="#333"/>
+    </svg>`,
+    pin: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+      <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z" fill="white"/>
+    </svg>`,
+    note: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+      <path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128h128L256 0zM112 256H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16zm0 64H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16zm0 64H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z" fill="white"/>
+    </svg>`,
+  };
+  for (const [k, svg] of Object.entries(ICON_SVGS)) {
+    try {
+      iconImgs[k] = await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      });
+    } catch(e) { console.warn('icon load fail', k); }
+  }
+})();
 
 // Pre-load the deCampoaCampo logo via proxy, then make it white for canvas
 // The logo's natural aspect ratio is ~6.2:1 (wide horizontal text logo)
@@ -570,103 +612,11 @@ function drawStory(ctx, d, img, theme) {
   }
 }
 
-/* ── ICON DRAWING ──
-   All icons are drawn in white using canvas paths.
-   cx/cy = center of icon, size = approximate bounding box size in canvas px.
-*/
+/* Draws a pre-loaded SVG icon centered at (cx, cy) with given size */
 function drawIcon(ctx, type, cx, cy, size) {
-  ctx.save();
-  ctx.fillStyle   = '#ffffff';
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth   = Math.max(2.5, size * 0.08);
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
-
-  if (type === 'kg') {
-    // Weight with handle: arc on top + rounded rect body + "kg" text
-    ctx.beginPath();
-    ctx.arc(cx, cy - size * 0.26, size * 0.14, Math.PI * 1.08, Math.PI * 0, false);
-    ctx.stroke();
-    roundRect(ctx, cx - size * 0.37, cy - size * 0.08, size * 0.74, size * 0.52, size * 0.1);
-    ctx.stroke();
-    ctx.font = `bold ${Math.round(size * 0.27)}px Arial, sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('kg', cx, cy + size * 0.19);
-    ctx.textBaseline = 'alphabetic';
-
-  } else if (type === 'cow') {
-    // Bull head: round filled head + curved horns + dark snout ellipse
-    // Head
-    ctx.beginPath();
-    ctx.arc(cx, cy + size * 0.06, size * 0.33, 0, Math.PI * 2);
-    ctx.fill();
-    // Left horn
-    ctx.lineWidth = size * 0.1;
-    ctx.beginPath();
-    ctx.moveTo(cx - size * 0.26, cy - size * 0.2);
-    ctx.quadraticCurveTo(cx - size * 0.5, cy - size * 0.52, cx - size * 0.19, cy - size * 0.44);
-    ctx.stroke();
-    // Right horn
-    ctx.beginPath();
-    ctx.moveTo(cx + size * 0.26, cy - size * 0.2);
-    ctx.quadraticCurveTo(cx + size * 0.5, cy - size * 0.52, cx + size * 0.19, cy - size * 0.44);
-    ctx.stroke();
-    // Snout
-    ctx.fillStyle = 'rgba(0,0,0,0.32)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + size * 0.28, size * 0.19, size * 0.13, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-  } else if (type === 'pin') {
-    // Location pin: filled teardrop
-    const r = size * 0.31;
-    const py = cy - size * 0.12;
-    // Top circle
-    ctx.beginPath();
-    ctx.arc(cx, py, r, 0, Math.PI * 2);
-    ctx.fill();
-    // Bottom pointer
-    ctx.beginPath();
-    ctx.moveTo(cx - r * 0.8, py + r * 0.6);
-    ctx.quadraticCurveTo(cx, py + size * 0.56, cx, py + size * 0.56);
-    ctx.quadraticCurveTo(cx, py + size * 0.56, cx + r * 0.8, py + r * 0.6);
-    ctx.closePath();
-    ctx.fill();
-    // Inner hole
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath();
-    ctx.arc(cx, py, r * 0.38, 0, Math.PI * 2);
-    ctx.fill();
-
-  } else if (type === 'note') {
-    // Notepad: filled page with folded corner + dark horizontal lines
-    const nx = cx - size * 0.3, ny = cy - size * 0.42;
-    const nw = size * 0.6,      nh = size * 0.84;
-    const fold = size * 0.18;
-    // Page body
-    ctx.beginPath();
-    ctx.moveTo(nx, ny);
-    ctx.lineTo(nx + nw - fold, ny);
-    ctx.lineTo(nx + nw, ny + fold);
-    ctx.lineTo(nx + nw, ny + nh);
-    ctx.lineTo(nx, ny + nh);
-    ctx.closePath();
-    ctx.fill();
-    // Folded corner triangle
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.beginPath();
-    ctx.moveTo(nx + nw - fold, ny);
-    ctx.lineTo(nx + nw - fold, ny + fold);
-    ctx.lineTo(nx + nw, ny + fold);
-    ctx.closePath();
-    ctx.fill();
-    // Lines on page
-    ctx.fillStyle = 'rgba(0,0,0,0.30)';
-    [0.36, 0.56, 0.74].forEach(f => {
-      ctx.fillRect(nx + nw * 0.12, ny + nh * f, nw * 0.74, Math.max(2, size * 0.065));
-    });
-  }
-  ctx.restore();
+  const img = iconImgs[type];
+  if (!img) return;
+  ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
 }
 
 /* ── UTILS ── */

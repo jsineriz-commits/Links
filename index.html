@@ -555,12 +555,12 @@ function drawStory(ctx, d, img, theme) {
     ctx.fillText(CAT, catX + 24, catY + 40);
   }
 
-  /* ── PRICE BAR — fixed at bottom, full-width, rounded top ── */
+  /* ── PRICE BAR — 80px above bottom edge (safe from WhatsApp/IG UI bars) ── */
+  const BOTTOM_SAFE = 80;
   const PRICE_H = 168;
-  const PRICE_Y = H - PRICE_H;
+  const PRICE_Y = H - PRICE_H - BOTTOM_SAFE;
   ctx.fillStyle = theme.bar;
-  // Rounded top corners only (extend rect below canvas so bottom corners are off-screen)
-  roundRect(ctx, 0, PRICE_Y, W, PRICE_H + 40, 32); ctx.fill();
+  roundRect(ctx, 0, PRICE_Y, W, PRICE_H, 32); ctx.fill();
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 74px Outfit, sans-serif';
   ctx.textAlign = 'center';

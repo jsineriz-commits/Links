@@ -571,21 +571,19 @@ function drawStory(ctx, d, img, theme) {
   const INFO_BOTTOM = PRICE_Y - 24;
   const INFO_AVAIL  = INFO_BOTTOM - INFO_TOP;
 
-  // Build row list — canvas icons instead of emoji; notepad only if msg provided
+  // Build row list — text only, no icons
   const rows = [];
-  if (d.peso)    rows.push({ icon: 'kg',   txt: d.peso + ' Promedio' });
-  if (d.cabezas) rows.push({ icon: 'cow',  txt: d.cabezas + ' Cabezas' });
-  if (d.zona)    rows.push({ icon: 'pin',  txt: d.zona });
-  if (msg)       rows.push({ icon: 'note', txt: msg, bold: true });
+  if (d.peso)    rows.push({ txt: d.peso + ' Promedio' });
+  if (d.cabezas) rows.push({ txt: d.cabezas + ' Cabezas' });
+  if (d.zona)    rows.push({ txt: d.zona });
+  if (msg)       rows.push({ txt: msg, bold: true });
 
   if (rows.length > 0) {
     const ROW_H     = Math.floor(INFO_AVAIL / rows.length);
-    const ICON_SIZE = Math.min(60, Math.floor(ROW_H * 0.46));
-    const TXT_SIZE  = Math.min(40, Math.floor(ROW_H * 0.30));
+    const TXT_SIZE  = Math.min(42, Math.floor(ROW_H * 0.32));
     const TXT_LINE  = TXT_SIZE * 1.32;
-    const ICON_CX   = 90;           // icon center x
-    const TXT_X     = 156;          // text start x
-    const TXT_MAX_W = W - TXT_X - 50;
+    const TXT_X     = 50;
+    const TXT_MAX_W = W - 100;
 
     rows.forEach((row, i) => {
       const rowTop = INFO_TOP + i * ROW_H;
@@ -603,8 +601,7 @@ function drawStory(ctx, d, img, theme) {
         ctx.restore();
       }
 
-      // Canvas icon (centered at ICON_CX, midY)
-      drawIcon(ctx, row.icon, ICON_CX, midY, ICON_SIZE);
+      // No icon — text only
 
       // Text — wrap and center vertically in row
       ctx.font = `${row.bold ? 'bold ' : ''}${TXT_SIZE}px Outfit, sans-serif`;

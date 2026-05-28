@@ -4,15 +4,27 @@
 
 Una web app desplegada en **Vercel** que toma el link de una publicación del sitio [decampoacampo.com](https://www.decampoacampo.com/) y genera automáticamente una imagen (story) lista para compartir en **WhatsApp Status** o **Instagram Stories**.
 
-El usuario solo pega el link, toca un botón, y obtiene una imagen profesional con todos los datos del lote (foto, categoría, cantidad de cabezas, peso, raza, ubicación y precio) sobre un fondo de color personalizable.
+El usuario solo pega el link, toca un botón, y obtiene una imagen profesional con todos los datos del lote (foto, categoría, cantidad de cabezas, peso, ubicación y precio) sobre un fondo de color personalizable.
 
 ---
 
 ## URLs
 
-- **Producción (Vercel):** https://links-wine-xi.vercel.app
+- **Producción (Vercel):** https://links-ashen-eta.vercel.app
+  *(proyecto `links` bajo cuenta `juansineriz-s-projects`)*
+- **URL vieja (desconectada):** https://links-wine-xi.vercel.app
+  *(era de otra sesión de Vercel — ya no auto-deplíea)*
 - **Repositorio GitHub:** https://github.com/jsineriz-commits/Links.git
 - **Sitio origen de los datos:** https://www.decampoacampo.com/
+
+> **Para reconectar auto-deploy GitHub → Vercel:**
+> Entrar a [vercel.com](https://vercel.com) → proyecto `links` → Settings → Git → conectar `jsineriz-commits/Links`
+> (requiere instalar la GitHub App de Vercel en la org `jsineriz-commits`)
+>
+> **Para deployar manualmente desde la PC:**
+> ```bash
+> npx vercel --prod --yes
+> ```
 
 ---
 
@@ -23,6 +35,7 @@ Links/
 ├── index.html        ← Toda la UI y lógica del cliente (canvas, parsing, share)
 ├── vercel.json       ← Config de rutas y build de Vercel
 ├── dev-server.cjs    ← Servidor local de desarrollo (Node.js, sin npm install)
+├── CONTEXTO.md       ← Este archivo de documentación
 ├── .gitignore
 └── api/
     ├── proxy.js      ← Serverless function: fetcha el HTML del lote (CORS bypass)
@@ -55,7 +68,7 @@ En `index.html`, la función `parseHTML()` extrae:
 - `og:url` → URL canónica
 - Precio: busca patrones `$X.XXX.XXX` en el HTML
 - SKU/ID del lote: del URL o de elementos `.numero_lote`
-- Categoría, cabezas, peso promedio, raza: del título y de la descripción
+- Categoría, cabezas, peso promedio: del título y de la descripción
 
 ### 4. La imagen se carga via proxy (`/api/image.js`)
 El canvas HTML5 no puede dibujar imágenes de otros dominios (CORS taint). La función `/api/image` fetchea la imagen y la devuelve con header `Access-Control-Allow-Origin: *`, permitiendo dibujarla en el canvas sin problemas.
@@ -64,34 +77,42 @@ El canvas HTML5 no puede dibujar imágenes de otros dominios (CORS taint). La fu
 La función `drawStory()` dibuja en un canvas de formato story vertical:
 
 ```
-┌─────────────────────────────┐  ← y=0 (zona segura: 80px vacíos)
+┌─────────────────────────────┐  ← y=0 (zona segura: 74px vacíos arriba)
+│  [LOGO deCampoaCampo] [#ID] │  ← logo izq + pill "Lote #XXXXX" derecha (y=74)
+├─────────────────────────────┤  ← y=138: foto del lote
 │                             │
-├─────────────────────────────┤  ← y=80: barra superior
-│  [LOGO deCampoaCampo]  #ID │     (logo en blanco + pill con Lote #XXXXX)
-├─────────────────────────────┤  ← y=190: foto del lote
-│                             │
-│        📷 IMAGEN            │     (36% del alto total, cover-fit)
+│        📷 IMAGEN            │     (46% del alto = ~883px, cover-fit, bordes redondeados)
 │                             │
 │   ┌──────────────────┐      │
-│   │   VACAS CUT      │      │     (badge de categoría sobre la foto)
+│   │   VACAS CUT      │      │     (badge de categoría sobre foto, abajo-izq)
 │   └──────────────────┘      │
 ├─────────────────────────────┤
-│  ┌──────────┐ ┌──────────┐  │
-│  │   25     │ │  480 kg  │  │     (cards: cabezas y peso)
-│  │ CABEZAS  │ │ PESO PROM│  │
-│  └──────────┘ └──────────┘  │
-│  Raza (bold, wraps)         │
-│  📍 Zona (más grande)       │
+│  ⚖️  480 kg Promedio         │     (ícono SVG personalizado + texto)
+│  🐄  25 Cabezas              │
+│  📍  Buenos Aires, Prov.    │     (puede wrappear si es largo)
+│  📄  Mensaje extra           │     (solo si el usuario escribió algo, en negrita)
+├─────────────────────────────┤
 │  ┌─────────────────────┐    │
-│  │  $1.750.000/cabeza  │    │     (barra de precio)
+│  │  $1.750.000/cabeza  │    │     (barra de precio, 80px arriba del borde)
 │  └─────────────────────┘    │
-│  *MENSAJE EXTRA* (opcional) │     (bold italic, si el usuario lo completa)
-└─────────────────────────────┘
+└─────────────────────────────┘  ← 80px zona segura abajo (barra de texto de apps)
 ```
 
-Los primeros **80px son transparentes** (zona segura) para que la foto de perfil del usuario en WhatsApp/Instagram no tape el contenido.
+**Zonas seguras:**
+- **Arriba:** 74px transparentes → la foto de perfil del usuario en WhatsApp/IG no tapa el logo
+- **Abajo:** 80px vacíos → la barra de texto de WhatsApp/IG no tapa el precio
 
-### 6. El usuario comparte
+### 6. Los íconos de las filas
+Los 4 íconos de las filas de datos son **imágenes SVG** cargadas como data-URIs al inicio:
+
+| Ícono | Para | SVG |
+|---|---|---|
+| ⚖️ kg | Peso promedio | Custom SVG (rect + handle + texto "kg") |
+| 🐄 vaca | Cantidad de cabezas | Custom SVG (cabeza con cuernos, hocico) |
+| 📍 pin | Zona/ubicación | Font Awesome `fa-location-dot` |
+| 📄 nota | Mensaje extra | Font Awesome `fa-file-lines` |
+
+### 7. El usuario comparte
 - En **móvil:** usa la Web Share API (`navigator.share`) para enviar la imagen directamente a WhatsApp, Instagram, etc.
 - En **desktop:** descarga la imagen como PNG.
 
@@ -101,8 +122,8 @@ Los primeros **80px son transparentes** (zona segura) para que la foto de perfil
 
 | Opción | Descripción |
 |---|---|
-| **Tema de color** | 8 colores de fondo: Azul, Verde, Amarillo, Rojo, Naranja, Violeta, Negro, Celeste |
-| **Mensaje extra** | Texto libre que aparece debajo del precio, en **negrita cursiva** |
+| **Tema de color** | 8 colores de fondo oscuros: Azul, Verde, Amarillo, Rojo, Naranja, Violeta, Negro, Celeste |
+| **Mensaje extra** | Texto libre → aparece con ícono 📄 en **negrita**, solo si se completa |
 
 ---
 
@@ -110,14 +131,14 @@ Los primeros **80px son transparentes** (zona segura) para que la foto de perfil
 
 | ID | Label | Fondo | Acento | Barra |
 |---|---|---|---|---|
-| `cielo` | Azul ⭐ (default) | `#0a1628 → #1a3a5c` | `#60b0ff` | `#2980b9` |
-| `campo` | Verde | `#0d2b0f → #1a4d1a` | `#4ade80` | `#27ae60` |
-| `tierra` | Amarillo | `#2b1a0a → #4d3010` | `#f0c030` | `#c87820` |
-| `fuego` | Rojo | `#2b0a0a → #4d1010` | `#f87171` | `#dc2626` |
-| `naranja` | Naranja | `#1a0e00 → #3d2200` | `#fb923c` | `#ea580c` |
-| `noche` | Violeta | `#0d0d14 → #1a1a2e` | `#c084fc` | `#7c3aed` |
-| `negro` | Negro | `#000000 → #111111` | `#ffffff` | `#222222` |
-| `celeste` | Celeste | `#001a2e → #003a5c` | `#38bdf8` | `#0284c7` |
+| `cielo` | Azul ⭐ (default) | `#030c18 → #0b2038` | `#60b0ff` | `#1666a8` |
+| `campo` | Verde | `#030f05 → #082010` | `#4ade80` | `#147a36` |
+| `tierra` | Amarillo | `#100800 → #221200` | `#f0c030` | `#a05808` |
+| `fuego` | Rojo | `#100303 → #1e0808` | `#f87171` | `#a81818` |
+| `naranja` | Naranja | `#0e0500 → #1c0c00` | `#fb923c` | `#b83c08` |
+| `noche` | Violeta | `#06060e → #0e0c1e` | `#c084fc` | `#5c18b8` |
+| `negro` | Negro | `#000000 → #070707` | `#d0d0d0` | `#181818` |
+| `celeste` | Celeste | `#000c1a → #00162e` | `#38bdf8` | `#0058a0` |
 
 ---
 
@@ -165,7 +186,7 @@ Proxea cualquier imagen externa con CORS abierto.
 | Frontend | HTML + CSS + JavaScript vanilla (sin frameworks) |
 | Canvas | HTML5 Canvas API (1080×1920 px) |
 | Backend | Node.js (Vercel Serverless Functions) |
-| Deploy | Vercel (auto-deploy desde GitHub main) |
+| Deploy | Vercel (proyecto `links` — deploy manual con CLI) |
 | Fuente | Google Fonts — Outfit |
 | Repositorio | GitHub — jsineriz-commits/Links |
 
@@ -184,13 +205,14 @@ El browser no puede hacer `fetch()` a `decampoacampo.com` por CORS. Las serverle
 La imagen debe poder descargarse como PNG y compartirse directamente con la Web Share API. Un canvas permite exportar píxeles; una página HTML no.
 
 ### ¿Por qué el logo está "blanqueado"?
-El SVG original de deCampoaCampo tiene texto en azul `#3179a7`. Para que se vea sobre el fondo oscuro del header, se dibuja en un canvas temporal y se rellena de blanco con `globalCompositeOperation = 'source-in'`.
+El SVG original de deCampoaCampo tiene texto en azul `#3179a7`. Para que se vea sobre el fondo oscuro del header, se dibuja en un canvas temporal y se rellena de blanco con `globalCompositeOperation = 'source-in'`. El canvas temporal se hace de 800×130px para respetar la proporción natural del logo (~6.2:1).
 
-### ¿Por qué 80px de margen arriba?
-En WhatsApp Status e Instagram Stories, la foto de perfil de quien publicó aparece en la esquina superior izquierda. Si el contenido empieza desde y=0, tapa el logo y el ID del lote. Los 80px vacíos aseguran que el contenido siempre sea visible.
+### ¿Por qué 74px de margen arriba y 80px abajo?
+- **Arriba:** En WhatsApp Status e Instagram Stories, la foto de perfil de quien publicó aparece en la esquina superior izquierda. Los 74px vacíos aseguran que el logo y el Lote# siempre sean visibles.
+- **Abajo:** La barra de texto para responder en WhatsApp/IG aparece sobre los últimos ~60-70px. Con 80px de margen el precio siempre es visible.
 
-### ¿Por qué wrapText devuelve el Y final?
-La descripción de raza y zona puede ser larga y ocupar 2+ líneas. Si `wrapText` no devuelve la posición Y del último texto dibujado, el siguiente elemento se posiciona de más y se superpone. El retorno del Y final permite acumular el offset correctamente.
+### ¿Por qué íconos SVG en lugar de emoji?
+Los emoji se renderizan diferente en cada sistema operativo (Android vs iOS vs Windows). Los SVG se renderizan igual en todos lados y se pueden hacer blancos sin problemas.
 
 ---
 
@@ -205,4 +227,7 @@ La descripción de raza y zona puede ser larga y ocupar 2+ líneas. Si `wrapText
    git commit -m "descripción del cambio"
    git push origin main
    ```
-4. Vercel detecta el push y despliega automáticamente en ~1-2 minutos.
+4. Deployar en Vercel:
+   ```bash
+   npx vercel --prod --yes
+   ```

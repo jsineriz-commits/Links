@@ -191,16 +191,16 @@
 <script>
 /* ── THEMES ── */
 const THEMES = [
-  { id:'cielo',   label:'Azul',    bg:['#0a1628','#1a3a5c'],  accent:'#60b0ff', text:'#e8f4ff', bar:'#2980b9' },
-  { id:'campo',   label:'Verde',   bg:['#0d2b0f','#1a4d1a'],  accent:'#4ade80', text:'#e0ffe8', bar:'#27ae60' },
-  { id:'tierra',  label:'Amarillo',bg:['#2b1a0a','#4d3010'],  accent:'#f0c030', text:'#fff5e0', bar:'#c87820' },
-  { id:'fuego',   label:'Rojo',    bg:['#2b0a0a','#4d1010'],  accent:'#f87171', text:'#ffe8e8', bar:'#dc2626' },
-  { id:'naranja', label:'Naranja', bg:['#1a0e00','#3d2200'],  accent:'#fb923c', text:'#fff0e0', bar:'#ea580c' },
-  { id:'noche',   label:'Violeta', bg:['#0d0d14','#1a1a2e'],  accent:'#c084fc', text:'#f0e8ff', bar:'#7c3aed' },
-  { id:'negro',   label:'Negro',   bg:['#000000','#111111'],  accent:'#ffffff', text:'#ffffff', bar:'#222222' },
-  { id:'celeste', label:'Celeste', bg:['#001a2e','#003a5c'],  accent:'#38bdf8', text:'#e0f7ff', bar:'#0284c7' },
+  { id:'cielo',   label:'Azul',    bg:['#030c18','#0b2038'],  accent:'#60b0ff', text:'#e8f4ff', bar:'#1666a8' },
+  { id:'campo',   label:'Verde',   bg:['#030f05','#082010'],  accent:'#4ade80', text:'#e0ffe8', bar:'#147a36' },
+  { id:'tierra',  label:'Amarillo',bg:['#100800','#221200'],  accent:'#f0c030', text:'#fff5e0', bar:'#a05808' },
+  { id:'fuego',   label:'Rojo',    bg:['#100303','#1e0808'],  accent:'#f87171', text:'#ffe8e8', bar:'#a81818' },
+  { id:'naranja', label:'Naranja', bg:['#0e0500','#1c0c00'],  accent:'#fb923c', text:'#fff0e0', bar:'#b83c08' },
+  { id:'noche',   label:'Violeta', bg:['#06060e','#0e0c1e'],  accent:'#c084fc', text:'#f0e8ff', bar:'#5c18b8' },
+  { id:'negro',   label:'Negro',   bg:['#000000','#070707'],  accent:'#d0d0d0', text:'#ffffff', bar:'#181818' },
+  { id:'celeste', label:'Celeste', bg:['#000c1a','#00162e'],  accent:'#38bdf8', text:'#e0f7ff', bar:'#0058a0' },
 ];
-const themeColors = ['#2980b9','#27ae60','#c87820','#dc2626','#ea580c','#7c3aed','#333333','#0284c7'];
+const themeColors = ['#1666a8','#147a36','#a05808','#a81818','#b83c08','#5c18b8','#222222','#0058a0'];
 const DEFAULT_THEME_IDX = 0; // Azul
 let activeTheme = THEMES[DEFAULT_THEME_IDX];
 let loteData = null;
@@ -514,29 +514,30 @@ function drawStory(ctx, d, img, theme) {
   const INFO_BOTTOM = PRICE_Y - 24;
   const INFO_AVAIL  = INFO_BOTTOM - INFO_TOP;
 
-  // Build row list: only include data that exists; 🌿 only if msg provided
+  // Build row list — canvas icons instead of emoji; notepad only if msg provided
   const rows = [];
-  if (d.peso)    rows.push({ em: '⚖️',  txt: d.peso + ' Promedio' });
-  if (d.cabezas) rows.push({ em: '🐂',  txt: d.cabezas + ' Cabezas' });
-  if (d.zona)    rows.push({ em: '📍',  txt: d.zona });
-  if (msg)       rows.push({ em: '🌿',  txt: msg });    // leaf emoji, bold, only if provided
+  if (d.peso)    rows.push({ icon: 'kg',   txt: d.peso + ' Promedio' });
+  if (d.cabezas) rows.push({ icon: 'cow',  txt: d.cabezas + ' Cabezas' });
+  if (d.zona)    rows.push({ icon: 'pin',  txt: d.zona });
+  if (msg)       rows.push({ icon: 'note', txt: msg, bold: true });
 
   if (rows.length > 0) {
     const ROW_H     = Math.floor(INFO_AVAIL / rows.length);
-    const EM_SIZE   = Math.min(52, Math.floor(ROW_H * 0.42));
+    const ICON_SIZE = Math.min(60, Math.floor(ROW_H * 0.46));
     const TXT_SIZE  = Math.min(40, Math.floor(ROW_H * 0.30));
     const TXT_LINE  = TXT_SIZE * 1.32;
-    const TXT_X     = 134;
+    const ICON_CX   = 90;           // icon center x
+    const TXT_X     = 156;          // text start x
     const TXT_MAX_W = W - TXT_X - 50;
 
     rows.forEach((row, i) => {
       const rowTop = INFO_TOP + i * ROW_H;
       const midY   = rowTop + ROW_H / 2;
 
-      // Separator line above each row (except first)
+      // Separator line
       if (i > 0) {
         ctx.save();
-        ctx.globalAlpha = 0.15;
+        ctx.globalAlpha = 0.12;
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -545,36 +546,127 @@ function drawStory(ctx, d, img, theme) {
         ctx.restore();
       }
 
-      // Emoji icon
-      ctx.font = `${EM_SIZE}px sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#fff';
-      ctx.fillText(row.em, 50, midY + EM_SIZE * 0.36);
+      // Canvas icon (centered at ICON_CX, midY)
+      drawIcon(ctx, row.icon, ICON_CX, midY, ICON_SIZE);
 
-      // Text — wrap into multiple lines if needed, centered vertically
-      const isBold = row.em === '🌿'; // bold for the leaf/extra row
-      ctx.font = `${isBold ? 'bold ' : ''}${TXT_SIZE}px Outfit, sans-serif`;
+      // Text — wrap and center vertically in row
+      ctx.font = `${row.bold ? 'bold ' : ''}${TXT_SIZE}px Outfit, sans-serif`;
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
-
-      // Compute wrapped lines
       const words = row.txt.split(' ');
       const lines = [];
       let cur = '';
-      for (const w of words) {
-        const test = cur + w + ' ';
+      for (const ww of words) {
+        const test = cur + ww + ' ';
         if (ctx.measureText(test).width > TXT_MAX_W && cur) {
-          lines.push(cur.trim()); cur = w + ' ';
+          lines.push(cur.trim()); cur = ww + ' ';
         } else cur = test;
       }
       if (cur.trim()) lines.push(cur.trim());
-
-      // Draw lines centered vertically in the row
-      const totalH  = lines.length * TXT_LINE;
-      const startY  = midY - totalH / 2 + TXT_SIZE * 0.82;
+      const totalH = lines.length * TXT_LINE;
+      const startY = midY - totalH / 2 + TXT_SIZE * 0.82;
       lines.forEach((line, li) => ctx.fillText(line, TXT_X, startY + li * TXT_LINE));
     });
   }
+}
+
+/* ── ICON DRAWING ──
+   All icons are drawn in white using canvas paths.
+   cx/cy = center of icon, size = approximate bounding box size in canvas px.
+*/
+function drawIcon(ctx, type, cx, cy, size) {
+  ctx.save();
+  ctx.fillStyle   = '#ffffff';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = Math.max(2.5, size * 0.08);
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+
+  if (type === 'kg') {
+    // Weight with handle: arc on top + rounded rect body + "kg" text
+    ctx.beginPath();
+    ctx.arc(cx, cy - size * 0.26, size * 0.14, Math.PI * 1.08, Math.PI * 0, false);
+    ctx.stroke();
+    roundRect(ctx, cx - size * 0.37, cy - size * 0.08, size * 0.74, size * 0.52, size * 0.1);
+    ctx.stroke();
+    ctx.font = `bold ${Math.round(size * 0.27)}px Arial, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('kg', cx, cy + size * 0.19);
+    ctx.textBaseline = 'alphabetic';
+
+  } else if (type === 'cow') {
+    // Bull head: round filled head + curved horns + dark snout ellipse
+    // Head
+    ctx.beginPath();
+    ctx.arc(cx, cy + size * 0.06, size * 0.33, 0, Math.PI * 2);
+    ctx.fill();
+    // Left horn
+    ctx.lineWidth = size * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.26, cy - size * 0.2);
+    ctx.quadraticCurveTo(cx - size * 0.5, cy - size * 0.52, cx - size * 0.19, cy - size * 0.44);
+    ctx.stroke();
+    // Right horn
+    ctx.beginPath();
+    ctx.moveTo(cx + size * 0.26, cy - size * 0.2);
+    ctx.quadraticCurveTo(cx + size * 0.5, cy - size * 0.52, cx + size * 0.19, cy - size * 0.44);
+    ctx.stroke();
+    // Snout
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + size * 0.28, size * 0.19, size * 0.13, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (type === 'pin') {
+    // Location pin: filled teardrop
+    const r = size * 0.31;
+    const py = cy - size * 0.12;
+    // Top circle
+    ctx.beginPath();
+    ctx.arc(cx, py, r, 0, Math.PI * 2);
+    ctx.fill();
+    // Bottom pointer
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.8, py + r * 0.6);
+    ctx.quadraticCurveTo(cx, py + size * 0.56, cx, py + size * 0.56);
+    ctx.quadraticCurveTo(cx, py + size * 0.56, cx + r * 0.8, py + r * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    // Inner hole
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.arc(cx, py, r * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (type === 'note') {
+    // Notepad: filled page with folded corner + dark horizontal lines
+    const nx = cx - size * 0.3, ny = cy - size * 0.42;
+    const nw = size * 0.6,      nh = size * 0.84;
+    const fold = size * 0.18;
+    // Page body
+    ctx.beginPath();
+    ctx.moveTo(nx, ny);
+    ctx.lineTo(nx + nw - fold, ny);
+    ctx.lineTo(nx + nw, ny + fold);
+    ctx.lineTo(nx + nw, ny + nh);
+    ctx.lineTo(nx, ny + nh);
+    ctx.closePath();
+    ctx.fill();
+    // Folded corner triangle
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.moveTo(nx + nw - fold, ny);
+    ctx.lineTo(nx + nw - fold, ny + fold);
+    ctx.lineTo(nx + nw, ny + fold);
+    ctx.closePath();
+    ctx.fill();
+    // Lines on page
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    [0.36, 0.56, 0.74].forEach(f => {
+      ctx.fillRect(nx + nw * 0.12, ny + nh * f, nw * 0.74, Math.max(2, size * 0.065));
+    });
+  }
+  ctx.restore();
 }
 
 /* ── UTILS ── */

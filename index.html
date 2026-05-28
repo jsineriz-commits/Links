@@ -555,9 +555,9 @@ function drawStory(ctx, d, img, theme) {
     ctx.fillText(CAT, catX + 24, catY + 40);
   }
 
-  /* ── PRICE BAR — 80px above bottom edge (safe from WhatsApp/IG UI bars) ── */
-  const BOTTOM_SAFE = 80;
-  const PRICE_H = 168;
+  /* ── PRICE BAR — 240px above bottom (safe from WhatsApp/IG bottom bar) ── */
+  const BOTTOM_SAFE = 240;
+  const PRICE_H = 180;
   const PRICE_Y = H - PRICE_H - BOTTOM_SAFE;
   ctx.fillStyle = theme.bar;
   roundRect(ctx, 0, PRICE_Y, W, PRICE_H, 32); ctx.fill();

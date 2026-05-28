@@ -499,10 +499,10 @@ function drawStory(ctx, d, img, theme) {
   ctx.beginPath(); ctx.arc(W * .08, H * .82, 260, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  /* ── LOGO — small, top-left, safe zone below y=70 ── */
+  /* ── LOGO — left only ── */
   const LOGO_Y  = 74;
-  const LOGO_H  = 44;                          // height in canvas pixels
-  const LOGO_W  = Math.round(LOGO_H * (800/130)); // ~271px wide, preserving 6.2:1 ratio
+  const LOGO_H  = 44;
+  const LOGO_W  = Math.round(LOGO_H * (800/130));
   if (logoImg) {
     ctx.drawImage(logoImg, 50, LOGO_Y, LOGO_W, LOGO_H);
   } else {
@@ -512,18 +512,20 @@ function drawStory(ctx, d, img, theme) {
     ctx.fillText('deCampoaCampo', 50, LOGO_Y + 34);
   }
 
-  /* ── LOTE # and CATEGORÍA — large bold row ── */
-  const LOTE_Y = LOGO_Y + LOGO_H + 52; // baseline of the big text
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 66px Outfit, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('Lote #' + (d.sku || ''), 50, LOTE_Y);
-  ctx.textAlign = 'right';
-  ctx.fillText(d.categoria || '', W - 50, LOTE_Y);
+  /* ── LOTE # — pill top-right, same level as logo ── */
+  if (d.sku) {
+    const pill = `Lote #${d.sku}`;
+    ctx.font = 'bold 32px Outfit, sans-serif';
+    const tw = ctx.measureText(pill).width + 40;
+    ctx.fillStyle = theme.accent + 'cc';
+    roundRect(ctx, W - tw - 40, LOGO_Y - 4, tw, 52, 12); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.textAlign = 'right';
+    ctx.fillText(pill, W - 60, LOGO_Y + 32);
+  }
 
-  /* ── PHOTO ── */
-  const PX = 30, PY = LOTE_Y + 28;
-  const PW = W - 60, PH = Math.round(H * 0.44);
+  /* ── PHOTO — starts just below the logo row, taller now ── */
+  const PX = 30, PY = LOGO_Y + LOGO_H + 20;
+  const PW = W - 60, PH = Math.round(H * 0.46);
 
   ctx.save();
   roundRect(ctx, PX, PY, PW, PH, 26);
@@ -539,6 +541,19 @@ function drawStory(ctx, d, img, theme) {
     ctx.fillText('🐄', W / 2, PY + PH / 2 + 40);
   }
   ctx.restore();
+
+  /* ── CATEGORY BADGE — bottom-left of photo ── */
+  if (d.categoria) {
+    const CAT = d.categoria.toUpperCase();
+    ctx.font = 'bold 34px Outfit, sans-serif';
+    const catW = ctx.measureText(CAT).width + 48;
+    const catX = PX + 24;
+    const catY = PY + PH - 78;
+    ctx.fillStyle = theme.accent;
+    roundRect(ctx, catX, catY, catW, 58, 10); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.textAlign = 'left';
+    ctx.fillText(CAT, catX + 24, catY + 40);
+  }
 
   /* ── PRICE BAR — fixed at bottom, full-width, rounded top ── */
   const PRICE_H = 168;

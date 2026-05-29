@@ -396,7 +396,11 @@ function parseHTML(html, url) {
   const categoria = extractCategoria(title);
   const zona = extractZona(description);
 
-  return { title, description, image, price, sku, raza, cabezas, peso, categoria, zona, url };
+  // Detect price unit: "invernada" listings are priced per kg; everything else per cabeza
+  const isInvernada = /invernada/i.test(url) || /invernada/i.test(title);
+  const priceUnit = isInvernada ? '/ kg' : '/ cabeza';
+
+  return { title, description, image, price, sku, raza, cabezas, peso, categoria, zona, url, priceUnit };
 }
 
 
@@ -425,7 +429,7 @@ function renderInfo(d) {
     ['Peso promedio', d.peso],
     ['Raza',         d.raza],
     ['Zona',         d.zona],
-    ['Precio/cabeza', d.price],
+    ['Precio', d.price ? d.price + ' ' + (d.priceUnit || '/ cabeza') : ''],
     ['ID lote',      d.sku ? '#' + d.sku : ''],
   ].filter(([, v]) => v);
 
@@ -564,7 +568,8 @@ function drawStory(ctx, d, img, theme) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 74px Outfit, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText((d.price || '') + ' / cabeza', W / 2, PRICE_Y + 110);
+  ctx.fillText((d.price || '') + ' ' + (d.priceUnit || '/ cabeza'), W / 2, PRICE_Y + 110);
+
 
   /* ── INFO ROWS — between photo and price bar ── */
   const INFO_TOP    = PY + PH + 44;
